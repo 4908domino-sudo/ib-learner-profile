@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IB 학습자상 탐험 · 5학년 3반</title>
+  <style>
+    :root {
+      --white: #fff;
+      --ink: #171719;
+      --text: rgba(37, 38, 41, .78);
+      --muted: rgba(55, 56, 60, .55);
+      --line: rgba(112, 115, 124, .22);
+      --bg: #f7f7f8;
+      --blue: #0066ff;
+      --shadow: 0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(112,115,124,.07);
+      --shadow-strong: 0 10px 28px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.06);
+      font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+    body { -webkit-font-smoothing: antialiased; }
+    button, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 12px 20px; background: var(--white); border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+      color: #fff; background: var(--blue); box-shadow: var(--shadow-strong);
+    }
+    .brand-title { display: block; color: var(--ink); font-size: 16px; font-weight: 800; line-height: 1.2; }
+    .brand-sub { display: block; color: var(--muted); font-size: 12px; font-weight: 650; line-height: 1.25; }
+
+    .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--bg); }
+    .tab {
+      display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px;
+      background: transparent; color: var(--muted); font-size: 14px; font-weight: 750;
+    }
+    .tab:hover { background: rgba(112,115,124,.08); color: var(--text); }
+    .tab.active { background: var(--white); color: #005eeb; box-shadow: var(--shadow); }
+    .tab-n {
+      width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+      background: rgba(112,115,124,.16); color: var(--muted); font-size: 12px;
+    }
+    .tab.active .tab-n { background: var(--blue); color: #fff; }
+
+    main { flex: 1; }
+    .screen { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; animation: rise .25s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .step {
+      display: inline-block; margin-bottom: 8px; padding: 4px 10px; border-radius: 999px;
+      background: #eaf2fe; color: var(--blue); font-size: 12px; font-weight: 850;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    .head h1 { margin-bottom: 6px; color: var(--ink); font-size: 26px; letter-spacing: 0; }
+    .head p { margin-bottom: 0; color: var(--muted); font-size: 14px; }
+
+    .progress { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ring {
+      --pct: 0;
+      width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+      background: conic-gradient(var(--blue) calc(var(--pct) * 1%), #e1e2e4 0);
+    }
+    .ring span {
+      width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--white); color: var(--ink); font-size: 18px; font-weight: 850;
+    }
+    .ring i { color: var(--muted); font-size: 11px; font-style: normal; }
+    .progress-label, .tally-label { color: var(--muted); font-size: 11px; font-weight: 750; }
+
+    .tabs.is-disabled { display: none; }
+    .seat-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr); gap: 20px; align-items: start; }
+    .seat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+    .seat {
+      min-height: 74px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      color: var(--ink); font-weight: 900; box-shadow: var(--shadow);
+    }
+    .seat:hover, .seat.selected { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue), var(--shadow); }
+    .seat small { min-height: 16px; color: var(--muted); font-size: 11px; font-weight: 750; }
+    .seat.selected small { color: #005eeb; }
+    .seat-form { display: flex; flex-direction: column; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { color: var(--ink); font-size: 13px; font-weight: 850; }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px;
+      background: #fff; color: var(--ink); font-weight: 750; outline: none;
+    }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #eaf2fe; }
+    .student-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: #eaf2fe; color: #0054d1; font-size: 12px; font-weight: 850; }
+    .setup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .notice {
+      display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px;
+      background: #f7fbff; color: #0054d1; border: 1px solid #c9defe; font-size: 14px; font-weight: 750;
+    }
+    .teams { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+    .team-card { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 14px; }
+    .team-title { display: flex; justify-content: space-between; align-items: center; color: var(--ink); font-weight: 900; margin-bottom: 10px; }
+    .team-members { display: flex; flex-wrap: wrap; gap: 6px; }
+    .member-pill { padding: 5px 9px; border-radius: 999px; background: var(--soft); color: var(--deep); font-size: 12px; font-weight: 850; }
+    .member-pill.me { background: var(--accent); color: #fff; }
+
+    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    .card {
+      position: relative; min-height: 178px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+      padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--white); text-align: left;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-strong); }
+    .card.answered { border-color: transparent; box-shadow: inset 0 0 0 2px var(--accent); background: var(--soft); }
+    .card-icon {
+      width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 6px;
+      background: var(--soft); color: var(--accent);
+    }
+    .card.answered .card-icon { background: #fff; }
+    .ko { color: var(--ink); font-size: 16px; font-weight: 850; }
+    .en { color: rgba(55,56,60,.35); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+    .cta { margin-top: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--accent); font-size: 12px; font-weight: 850; }
+    .check {
+      position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%;
+      display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: var(--shadow);
+    }
+
+    .modal-back {
+      position: fixed; inset: 0; z-index: 40; display: grid; place-items: center;
+      padding: 20px; background: rgba(23,23,25,.52);
+    }
+    .modal {
+      width: min(100%, 460px); overflow: hidden; position: relative; border-radius: 28px;
+      background: var(--white); box-shadow: 0 12px 36px rgba(0,0,0,.18);
+    }
+    .modal-x {
+      position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 50%;
+      display: grid; place-items: center; background: rgba(255,255,255,.7); color: var(--muted);
+    }
+    .modal-head { display: flex; gap: 16px; align-items: center; padding: 24px; background: var(--soft); }
+    .modal-icon {
+      flex: 0 0 auto; width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center;
+      background: #fff; color: var(--accent); box-shadow: var(--shadow);
+    }
+    .modal-en { display: block; color: var(--deep); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+    .modal-title { margin: 2px 0 0; color: var(--ink); font-size: 19px; line-height: 1.35; }
+    .modal-body { padding: 20px 24px 8px; }
+    textarea {
+      width: 100%; min-height: 120px; resize: vertical; padding: 16px; border-radius: 12px;
+      border: 1px solid var(--line); outline: none; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6;
+    }
+    textarea:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 3px #eaf2fe; }
+    .meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+    .hint, .count { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .actions { display: flex; gap: 10px; padding: 16px 24px 24px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 850; background: rgba(112,115,124,.08); color: var(--text);
+    }
+    .btn:hover { filter: brightness(1.04); }
+    .btn.primary { background: var(--accent, var(--blue)); color: #fff; }
+    .btn:disabled { background: #f4f4f5 !important; color: rgba(55,56,60,.25); cursor: not-allowed; filter: none; }
+    .actions .btn { flex: 1; }
+    .actions .ghost { flex: 0 0 auto; }
+
+    .lens { display: flex; flex-direction: column; gap: 4px; }
+    .lens label { color: var(--muted); font-size: 11px; font-weight: 750; }
+    select { min-width: 180px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-weight: 800; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .panel {
+      border: 1px solid var(--line); border-radius: 22px; padding: 20px; background: #fff;
+    }
+    .panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .panel-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 15px; font-weight: 850; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--soft); color: var(--deep); font-size: 12px; font-weight: 850; }
+    .postits { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .postit {
+      position: relative; min-height: 116px; display: flex; flex-direction: column; gap: 8px;
+      padding: 16px 12px 12px; border-radius: 8px; background: var(--soft); box-shadow: var(--shadow);
+    }
+    .pin { position: absolute; top: 8px; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translateX(-50%); background: var(--accent); }
+    .postit p { flex: 1; margin: 6px 0 0; color: #292a2d; font-size: 13px; font-weight: 650; line-height: 1.5; }
+    .avatar { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; margin-right: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 850; }
+    .name { color: #46474c; font-size: 12px; font-weight: 850; }
+    .compose-frame { padding: 16px; border: 2px dashed var(--accent); border-radius: 16px; background: #fff; }
+    .prefix { display: block; margin-bottom: 8px; color: var(--deep); font-size: 14px; font-weight: 850; }
+    .compose-frame textarea { min-height: 126px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+    .lead { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .block { width: 100%; margin-top: 16px; }
+    .submitted { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 4px 4px; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 850; }
+    .def { color: var(--ink); font-size: 19px; line-height: 1.55; font-weight: 850; }
+    .submitted-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding-top: 16px; border-top: 1px solid var(--line); }
+    .small { padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+
+    .tally { text-align: center; }
+    .tally-num { display: block; color: #005eeb; font-size: 28px; line-height: 1; font-weight: 900; }
+    .tally-num i { color: rgba(55,56,60,.3); font-size: 15px; font-style: normal; }
+    .declare {
+      position: relative; overflow: hidden; margin-bottom: 32px; padding: 40px; border-radius: 28px; background: #171719; color: #fff;
+    }
+    .declare::after {
+      content: ""; position: absolute; top: -120px; right: -80px; width: 320px; height: 320px; border-radius: 50%;
+      background: radial-gradient(circle, #0066ff 0%, transparent 70%); opacity: .35;
+    }
+    .declare-inner { position: relative; z-index: 1; }
+    .declare-label { display: inline-flex; gap: 6px; margin-bottom: 12px; color: #9ec5ff; font-size: 12px; font-weight: 850; }
+    .declare-title { display: block; margin-bottom: 12px; color: rgba(255,255,255,.55); font-size: 13px; font-weight: 750; }
+    blockquote { margin: 0; max-width: 900px; color: #fff; font-size: 30px; line-height: 1.5; font-weight: 900; }
+    .quote-mark { color: #69a5ff; }
+    .declare .btn { margin-top: 20px; background: rgba(255,255,255,.12); color: #fff; }
+    .declare textarea { min-height: 120px; background: rgba(255,255,255,.95); color: #171719; font-size: 22px; font-weight: 850; }
+    .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+    .gallery-bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .gallery-hint { color: var(--muted); font-size: 12px; }
+    .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .gcard { overflow: hidden; display: flex; flex-direction: column; min-height: 210px; border: 1.5px solid var(--line); border-radius: 18px; background: #fff; }
+    .gcard.mine { border-color: var(--accent); }
+    .gcard-top { position: relative; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--soft); }
+    .gno { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 900; }
+    .gname { display: block; color: var(--deep); font-size: 14px; font-weight: 850; }
+    .members { color: var(--muted); font-size: 11px; font-weight: 750; }
+    .mine-label { position: absolute; top: 10px; right: 12px; padding: 3px 8px; border-radius: 999px; background: #292a2d; color: #fff; font-size: 10px; font-weight: 850; }
+    .gbody { flex: 1; display: flex; padding: 16px; }
+    .gbody p { margin: 0; color: var(--text); font-size: 14px; font-weight: 650; line-height: 1.6; }
+    .empty { display: flex; align-items: center; gap: 8px; color: rgba(55,56,60,.35); font-size: 13px; font-weight: 750; }
+    .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #dbdcdf; border-top-color: #989ba2; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    svg { flex: 0 0 auto; }
+    @media (max-width: 960px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 860px) { .split, .seat-layout { grid-template-columns: 1fr; } .gallery { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px) {
+      .topbar { justify-content: center; }
+      .tabs { width: 100%; justify-content: space-between; }
+      .tab { flex: 1; justify-content: center; padding: 8px 10px; }
+      .tab-label { display: none; }
+      .screen { padding: 20px 16px 48px; }
+      .head h1 { font-size: 22px; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .postits, .gallery, .teams { grid-template-columns: 1fr; }
+      .seat-grid { grid-template-columns: repeat(3, 1fr); }
+      .setup-grid { grid-template-columns: 1fr; }
+      .declare { padding: 24px; }
+      blockquote { font-size: 22px; }
+      .gallery-bar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" data-icon="sparkles"></div>
+        <div>
+          <span class="brand-title">IB 학습자상 탐험</span>
+          <span class="brand-sub">5학년 3반 · 오삼불고기</span>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="활동 단계">
+        <button class="tab active" data-tab="personal"><span class="tab-n">1</span><span class="tab-label">개인 활동</span></button>
+        <button class="tab" data-tab="group"><span class="tab-n">2</span><span class="tab-label">모둠 활동</span></button>
+        <button class="tab" data-tab="class"><span class="tab-n">3</span><span class="tab-label">반 전체</span></button>
+        <button class="tab" data-tab="self"><span class="tab-n">4</span><span class="tab-label">자기 평가</span></button>
+      </nav>
+    </header>
+    <main id="main"></main>
+  </div>
+  <div id="modal-root"></div>
+
+  <script>
+    const icons = {
+      sparkles: '<path d="M9.9 14.7 9 19l-.9-4.3a3 3 0 0 0-2.7-2.7L1 11l4.3-.9a3 3 0 0 0 2.7-2.7L9 3l.9 4.3a3 3 0 0 0 2.7 2.7L17 11l-4.3.9a3 3 0 0 0-2.8 2.8z"/><path d="M18 16.5 18.5 19l.5-2.5L21.5 16 19 15.5 18.5 13 18 15.5 15.5 16z"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+      lightbulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+      message: '<path d="M21 11.5a8.5 8.5 0 0 1-11.3 8L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z"/>',
+      scale: '<path d="M12 3v18"/><path d="M5 7h14"/><path d="m5 7-3 6h6Z"/><path d="m19 7-3 6h6Z"/><path d="M7 21h10"/>',
+      globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>',
+      heart: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 12 5 5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.1 3 5.5l7 7Z"/>',
+      mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+      activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      reflect: '<circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2m-15.7 5.7-1.4 1.4m14.2-14.2-1.4 1.4m0 11.4 1.4 1.4M4.9 4.9l1.4 1.4"/>',
+      check: '<polyline points="20 6 9 17 4 12"/>',
+      pencil: '<path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+      plus: '<path d="M5 12h14M12 5v14"/>',
+      close: '<path d="M18 6 6 18M6 6l12 12"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+      quote: '<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2.5a.5.5 0 0 1 .5.5v.5a2 2 0 0 1-2 2 1 1 0 0 0 0 2 4 4 0 0 0 4-4V5a2 2 0 0 0-2-2z"/><path d="M6 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2.5a.5.5 0 0 1 .5.5v.5a2 2 0 0 1-2 2 1 1 0 0 0 0 2 4 4 0 0 0 4-4V5a2 2 0 0 0-2-2z"/>',
+      send: '<path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.7l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/><path d="m21.9 2.1-11 11"/>',
+      grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+      star: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21 7 14.2 2 9.3l6.9-1Z"/>'
+    };
+
+    const ramps = {
+      blue: ["#eaf2fe", "#f7fbff", "#0066ff", "#003e9c"],
+      violet: ["#f0ecfe", "#fbfaff", "#6541f2", "#3a16c9"],
+      purple: ["#f9edff", "#fefbff", "#cb59ff", "#861cb8"],
+      cyan: ["#defaff", "#f7feff", "#00bdde", "#006f82"],
+      green: ["#d9ffe6", "#f2fff6", "#00bf40", "#006e25"],
+      lightBlue: ["#e5f6fe", "#f7fdff", "#00aeff", "#006796"],
+      pink: ["#feecfb", "#fffafe", "#e846cd", "#a81690"],
+      orange: ["#fef4e6", "#fffcf7", "#ff9200", "#9c5800"],
+      lime: ["#e6ffd4", "#f8fff2", "#58cf04", "#347d00"],
+      redOrange: ["#feeee5", "#fffaf7", "#ff5e00", "#943600"]
+    };
+
+    const profiles = [
+      ["inquirers", "탐구하는 사람", "Inquirers", "compass", "blue", "궁금한 것을 스스로 찾아보고 질문해요."],
+      ["knowledgeable", "지식이 많은 사람", "Knowledgeable", "book", "violet", "여러 분야를 깊고 넓게 배워요."],
+      ["thinkers", "생각하는 사람", "Thinkers", "lightbulb", "purple", "문제를 꼼꼼히 따져보고 해결해요."],
+      ["communicators", "소통하는 사람", "Communicators", "message", "cyan", "내 생각을 잘 전하고 남의 말도 들어요."],
+      ["principled", "원칙을 지키는 사람", "Principled", "scale", "green", "정직하고 약속과 규칙을 지켜요."],
+      ["openminded", "열린 마음을 가진 사람", "Open-minded", "globe", "lightBlue", "다른 생각과 문화를 존중해요."],
+      ["caring", "배려하는 사람", "Caring", "heart", "pink", "친구의 마음을 살피고 도와줘요."],
+      ["risktakers", "도전하는 사람", "Risk-takers", "mountain", "orange", "어려워도 용기 있게 시도해요."],
+      ["balanced", "균형 잡힌 사람", "Balanced", "activity", "lime", "공부와 놀이, 몸과 마음의 균형을 챙겨요."],
+      ["reflective", "성찰하는 사람", "Reflective", "reflect", "redOrange", "내가 한 일을 돌아보고 더 나아져요."]
+    ].map(([id, ko, en, icon, color, desc]) => ({ id, ko, en, icon, color, desc }));
+
+    const members = ["김서연", "박도윤", "이하준", "최지우"];
+    const notes = {
+      caring: [
+        "친구가 넘어졌을 때 손을 내밀어 주고 괜찮은지 물어보는 거예요.",
+        "내 지우개를 안 가져온 친구에게 빌려주는 마음이에요.",
+        "동생과 물건을 같이 나누어 쓰는 것도 배려라고 생각해요.",
+        "급식 먹을 때 친구 자리를 챙겨주는 모습이에요."
+      ],
+      inquirers: [
+        "하늘은 왜 파란색인지 끝까지 찾아보는 사람이에요.",
+        "모르는 단어가 나오면 바로 사전을 찾아봐요.",
+        "실험이 왜 그렇게 되는지 자꾸 물어보는 거예요.",
+        "책을 읽다가 궁금한 점을 메모해 두는 사람."
+      ],
+      thinkers: [
+        "문제가 잘 안 풀리면 다른 방법으로도 생각해 봐요.",
+        "친구의 설명이 맞는지 차분히 따져봐요.",
+        "정답을 외우기보다 왜 그런지 이유를 생각해요.",
+        "게임 전략을 미리 머릿속으로 짜보는 모습이에요."
+      ]
+    };
+
+    let pendingAssignments = null;
+    const state = {
+      selectedSeat: null,
+      currentSeat: null,
+      currentName: "",
+      roster: {},
+      tab: "personal",
+      answers: {},
+      groupProfileId: "caring",
+      groupDef: "",
+      groupSubmitted: false,
+      groupCount: 6,
+      groupSize: 4,
+      groupAssignments: [],
+      classProfileId: "caring",
+      classMeanings: {},
+      selfScores: {}
+    };
+
+    const classGroupTemplates = [
+      { no: 1, name: "1모둠 · 무지개", members: 4 },
+      { no: 2, name: "2모둠 · 번개", members: 4 },
+      { no: 3, name: "3모둠 · 새싹", members: 4 },
+      { no: 4, name: "4모둠 · 별빛", members: 3 },
+      { no: 5, name: "5모둠 · 파도", members: 4 },
+      { no: 6, name: "6모둠 · 햇살", members: 4 }
+    ];
+
+    const classDefinitions = {
+      caring: [
+        "친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.",
+        "말과 행동으로 상대방이 존중받는다고 느끼게 해 주는 사람이다.",
+        "나만 생각하지 않고 모두가 편안한 방법을 찾는 사람이다.",
+        "작은 친절을 매일 실천해서 교실을 따뜻하게 만드는 사람이다.",
+        "",
+        ""
+      ],
+      inquirers: [
+        "궁금한 것을 그냥 넘기지 않고 스스로 질문하며 찾아보는 사람이다.",
+        "'왜?'라는 질문을 끝까지 붙잡고 새로운 답을 발견하는 사람이다.",
+        "관찰하고 묻고 실험하면서 배움을 스스로 넓히는 사람이다.",
+        "모르는 것을 부끄러워하지 않고 배움의 시작으로 삼는 사람이다.",
+        "",
+        ""
+      ],
+      thinkers: [
+        "문제를 여러 방향에서 살펴보고 가장 알맞은 방법을 찾는 사람이다.",
+        "정답보다 이유를 먼저 생각하며 차분하게 판단하는 사람이다.",
+        "친구의 의견도 비교해 보며 더 좋은 생각을 만드는 사람이다.",
+        "어려운 상황에서도 멈추지 않고 해결 방법을 찾아보는 사람이다.",
+        "",
+        ""
+      ],
+      communicators: [
+        "내 생각을 분명하게 말하고 친구의 말도 끝까지 듣는 사람이다.",
+        "서로의 생각을 이어 주어 함께 이해할 수 있게 돕는 사람이다.",
+        "말, 글, 그림 등 여러 방법으로 마음과 생각을 나누는 사람이다.",
+        "다른 의견이 있어도 존중하며 대화로 해결하려는 사람이다.",
+        "",
+        ""
+      ],
+      principled: [
+        "아무도 보지 않아도 정직하게 약속과 규칙을 지키는 사람이다.",
+        "옳다고 생각한 일을 책임 있게 실천하는 사람이다.",
+        "실수했을 때 숨기지 않고 인정하며 바로잡는 사람이다.",
+        "공동체를 위해 공정하게 행동하려고 노력하는 사람이다.",
+        "",
+        ""
+      ],
+      openminded: [
+        "나와 다른 생각과 문화를 존중하며 배우려는 사람이다.",
+        "처음 듣는 의견도 바로 판단하지 않고 열린 마음으로 듣는 사람이다.",
+        "차이를 틀림이 아니라 새로운 배움으로 받아들이는 사람이다.",
+        "친구마다 다른 장점을 발견하고 인정하는 사람이다.",
+        "",
+        ""
+      ],
+      risktakers: [
+        "어려워 보여도 용기 있게 첫걸음을 내딛는 사람이다.",
+        "실패를 두려워하지 않고 다시 도전하며 배우는 사람이다.",
+        "새로운 방법을 시도해 보며 자신의 가능성을 넓히는 사람이다.",
+        "도움이 필요할 때 요청하면서도 스스로 해 보려는 사람이다.",
+        "",
+        ""
+      ],
+      balanced: [
+        "공부와 놀이, 몸과 마음을 함께 건강하게 돌보는 사람이다.",
+        "한쪽에만 치우치지 않고 생활의 균형을 찾는 사람이다.",
+        "쉬는 시간과 배우는 시간을 모두 소중히 여기는 사람이다.",
+        "나와 친구, 개인과 공동체를 함께 생각하는 사람이다.",
+        "",
+        ""
+      ],
+      reflective: [
+        "내가 한 일을 돌아보고 다음에는 더 나아지려는 사람이다.",
+        "잘한 점과 고칠 점을 스스로 발견하는 사람이다.",
+        "실수를 배움으로 바꾸며 성장하는 사람이다.",
+        "오늘의 경험에서 내일의 목표를 찾는 사람이다.",
+        "",
+        ""
+      ],
+      knowledgeable: [
+        "배운 지식을 서로 연결해 세상을 더 깊이 이해하는 사람이다.",
+        "여러 분야의 지식을 넓고 깊게 배우려는 사람이다.",
+        "알게 된 것을 생활 속 문제 해결에 활용하는 사람이다.",
+        "새로운 지식을 친구들과 나누며 함께 성장하는 사람이다.",
+        "",
+        ""
+      ]
+    };
+
+    function icon(name, size = 20, fill = "none") {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
+    }
+    function styleVars(color) {
+      const [soft, pale, accent, deep] = ramps[color];
+      return `--soft:${soft};--pale:${pale};--accent:${accent};--deep:${deep}`;
+    }
+    function esc(text) {
+      return String(text ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
+    }
+
+    const STORAGE_KEY = "ib-learner-profile-explorer-v2";
+
+    function emptyStudentData() {
+      return {
+        answers: {},
+        groupProfileId: "caring",
+        groupDef: "",
+        groupSubmitted: false,
+        classProfileId: "caring",
+        classMeanings: {},
+        selfScores: {}
+      };
+    }
+
+    function loadStore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        state.roster = saved.roster || {};
+        state.groupCount = saved.groupCount || state.groupCount;
+        state.groupSize = saved.groupSize || state.groupSize;
+        state.groupAssignments = saved.groupAssignments || [];
+      } catch {
+        state.roster = {};
+      }
+    }
+
+    function saveStore() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        roster: state.roster,
+        groupCount: state.groupCount,
+        groupSize: state.groupSize,
+        groupAssignments: state.groupAssignments
+      }));
+    }
+
+    function loadStudent(seat) {
+      const record = state.roster[seat] || { name: "", data: emptyStudentData() };
+      const data = { ...emptyStudentData(), ...(record.data || {}) };
+      state.currentSeat = seat;
+      state.currentName = record.name || "";
+      state.answers = data.answers || {};
+      state.groupProfileId = data.groupProfileId || "caring";
+      state.groupDef = data.groupDef || "";
+      state.groupSubmitted = Boolean(data.groupSubmitted);
+      state.classProfileId = data.classProfileId || "caring";
+      state.classMeanings = data.classMeanings || {};
+      state.selfScores = data.selfScores || {};
+    }
+
+    function saveCurrentStudent() {
+      if (!state.currentSeat) return;
+      state.roster[state.currentSeat] = {
+        name: state.currentName,
+        data: {
+          answers: state.answers,
+          groupProfileId: state.groupProfileId,
+          groupDef: state.groupDef,
+          groupSubmitted: state.groupSubmitted,
+          classProfileId: state.classProfileId,
+          classMeanings: state.classMeanings,
+          selfScores: state.selfScores
+        }
+      };
+      saveStore();
+    }
+
+    function registeredStudents() {
+      return Object.entries(state.roster)
+        .filter(([, record]) => record && record.name)
+        .map(([seat, record]) => ({ seat: Number(seat), name: record.name }))
+        .sort((a, b) => a.seat - b.seat);
+    }
+
+    function shuffle(items) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function render() {
+      document.querySelector(".tabs").classList.toggle("is-disabled", !state.currentSeat);
+      if (!state.currentSeat) {
+        renderSeatScreen();
+        hydrateIcons();
+        return;
+      }
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === state.tab));
+      if (state.tab === "personal") renderPersonal();
+      if (state.tab === "group") renderGroup();
+      if (state.tab === "class") renderClass();
+      if (state.tab === "self") renderSelf();
+      hydrateIcons();
+    }
+
+    function renderSeatScreen() {
+      const selected = state.selectedSeat;
+      const selectedRecord = selected ? state.roster[selected] : null;
+      document.getElementById("main").innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">시작 · 번호 자리 선택</span>
+              <h1>내 번호 자리를 선택하세요</h1>
+              <p>1번부터 30번까지 자리 중 하나를 고르고 이름을 입력하면, 같은 번호로 다시 들어와 이어서 할 수 있어요.</p>
+            </div>
+            <span class="student-chip">${registeredStudents().length}/30명 등록됨</span>
+          </header>
+          <div class="seat-layout">
+            <section class="panel">
+              <div class="seat-grid">
+                ${Array.from({ length: 30 }, (_, i) => {
+                  const no = i + 1;
+                  const record = state.roster[no];
+                  return `<button class="seat ${selected === no ? "selected" : ""}" data-seat="${no}">
+                    <span>${no}번</span>
+                    <small>${record?.name ? esc(record.name) : "비어 있음"}</small>
+                  </button>`;
+                }).join("")}
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-bar"><span class="panel-title">${icon("pencil", 18)} 이름 입력</span></div>
+              ${selected ? `
+                <div class="seat-form">
+                  <div class="field">
+                    <label for="student-name">${selected}번 이름</label>
+                    <input id="student-name" type="text" maxlength="12" value="${esc(selectedRecord?.name || "")}" placeholder="이름을 입력하세요" />
+                  </div>
+                  <button class="btn primary block" id="start-learning">${icon("send", 17)} 시작하기</button>
+                  <p class="hint">이미 사용한 번호라면 저장된 활동 내용을 이어서 불러옵니다.</p>
+                </div>` : `
+                <div class="notice">${icon("sparkles", 16)} 먼저 왼쪽에서 내 번호 자리를 선택하세요.</div>`}
+            </section>
+          </div>
+        </section>`;
+      document.querySelectorAll("[data-seat]").forEach(btn => btn.addEventListener("click", () => {
+        state.selectedSeat = Number(btn.dataset.seat);
+        renderSeatScreen();
+        hydrateIcons();
+      }));
+      const input = document.getElementById("student-name");
+      const start = document.getElementById("start-learning");
+      if (input && start) {
+        const sync = () => { start.disabled = !input.value.trim(); };
+        input.addEventListener("input", sync);
+        input.addEventListener("keydown", e => { if (e.key === "Enter" && input.value.trim()) start.click(); });
+        start.addEventListener("click", () => {
+          const seat = state.selectedSeat;
+          const previous = state.roster[seat]?.data || emptyStudentData();
+          state.roster[seat] = { name: input.value.trim(), data: previous };
+          loadStudent(seat);
+          state.currentName = input.value.trim();
+          state.tab = "personal";
+          saveCurrentStudent();
+          render();
+        });
+        sync();
+        setTimeout(() => input.focus(), 20);
+      }
+    }
+
+    function renderPersonal() {
+      const done = profiles.filter(p => state.answers[p.id]?.trim()).length;
+      const pct = Math.round(done / profiles.length * 100);
+      document.getElementById("main").innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">1단계 · 개인 활동</span>
+              <h1>나만의 학습자상 사전 만들기</h1>
+              <p>10가지 학습자상을 하나씩 눌러서 내가 생각하는 뜻을 직접 적어 보세요.</p>
+            </div>
+            <div class="progress">
+              <div class="ring" style="--pct:${pct}"><span>${done}<i>/10</i></span></div>
+              <span class="progress-label">${pct === 100 ? "모두 완성!" : "작성 완료"}</span>
+            </div>
+          </header>
+          <div class="grid">
+            ${profiles.map(p => {
+              const answered = Boolean(state.answers[p.id]?.trim());
+              return `<button class="card ${answered ? "answered" : ""}" style="${styleVars(p.color)}" data-profile="${p.id}">
+                ${answered ? `<span class="check">${icon("check", 15)}</span>` : ""}
+                <span class="card-icon">${icon(p.icon, 26)}</span>
+                <span class="ko">${esc(p.ko)}</span>
+                <span class="en">${esc(p.en)}</span>
+                <span class="cta">${icon(answered ? "pencil" : "plus", 14)} ${answered ? "내 생각 보기" : "내 생각 쓰기"}</span>
+              </button>`;
+            }).join("")}
+          </div>
+        </section>`;
+      document.querySelectorAll("[data-profile]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.profile)));
+    }
+
+    function openModal(id) {
+      const p = profiles.find(item => item.id === id);
+      const root = document.getElementById("modal-root");
+      root.innerHTML = `
+        <div class="modal-back" role="presentation">
+          <section class="modal" role="dialog" aria-modal="true" aria-label="${esc(p.ko)} 쓰기" style="${styleVars(p.color)}">
+            <button class="modal-x" aria-label="닫기">${icon("close", 20)}</button>
+            <div class="modal-head">
+              <span class="modal-icon">${icon(p.icon, 30)}</span>
+              <div><span class="modal-en">${esc(p.en)}</span><h2 class="modal-title">내가 생각하는<br><b style="color:var(--deep)">${esc(p.ko)}</b>이란?</h2></div>
+            </div>
+            <div class="modal-body">
+              <textarea id="answer-text" maxlength="300" placeholder="예: ${esc(p.desc)}&#10;&#10;내가 생각하는 ${esc(p.ko)}의 모습과 이유를 자유롭게 적어 보세요.">${esc(state.answers[id] || "")}</textarea>
+              <div class="meta"><span class="hint">${icon("sparkles", 13)} 친구에게 설명하듯 적으면 좋아요.</span><span class="count" id="answer-count">0/300</span></div>
+            </div>
+            <div class="actions">
+              <button class="btn ghost" id="cancel">취소</button>
+              <button class="btn primary" id="save">저장하기</button>
+            </div>
+          </section>
+        </div>`;
+      const close = () => root.innerHTML = "";
+      const textarea = document.getElementById("answer-text");
+      const count = document.getElementById("answer-count");
+      const save = document.getElementById("save");
+      const sync = () => { count.textContent = `${textarea.value.length}/300`; save.disabled = !textarea.value.trim(); };
+      textarea.addEventListener("input", sync);
+      document.getElementById("cancel").addEventListener("click", close);
+      document.querySelector(".modal-x").addEventListener("click", close);
+      document.querySelector(".modal-back").addEventListener("mousedown", e => { if (e.target.classList.contains("modal-back")) close(); });
+      save.addEventListener("click", () => { state.answers[id] = textarea.value; saveCurrentStudent(); close(); render(); });
+      sync();
+      setTimeout(() => textarea.focus(), 30);
+    }
+
+    function renderGroup() {
+      if (!state.groupAssignments.length) { renderGroupSetup(); return; }
+      const p = profiles.find(item => item.id === state.groupProfileId);
+      const myGroup = state.groupAssignments.find(g => g.members.some(m => m.seat === state.currentSeat));
+      const groupMembers = myGroup ? myGroup.members : [];
+      const list = groupMembers.length
+        ? groupMembers.map(m => ({ name: m.name, text: state.roster[m.seat]?.data?.answers?.[p.id] || "" }))
+        : (notes[p.id] || ["", "", "", ""]).map((t, i) => ({ name: `학생${i + 1}`, text: t }));
+      document.getElementById("main").innerHTML = `
+        <section class="screen" style="${styleVars(p.color)}">
+          <header class="head">
+            <div>
+              <span class="step">2단계 · 모둠 활동</span>
+              <h1>생각을 모아 우리 모둠의 정의 만들기</h1>
+              <p>${myGroup ? `내 모둠: <b>${esc(myGroup.name)}</b> · ${groupMembers.map(m => esc(m.name)).join(", ")}` : "모둠원이 적은 생각을 함께 보고, 한 문장으로 모아 보세요."}</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+              <div class="lens">
+                <label for="profile-select">함께 보는 학습자상</label>
+                <select id="profile-select">${profiles.map(item => `<option value="${item.id}" ${item.id === p.id ? "selected" : ""}>${esc(item.ko)}</option>`).join("")}</select>
+              </div>
+              <button class="btn small" id="reset-groups">${icon("reflect", 14)} 모둠 재배정</button>
+            </div>
+          </header>
+          <div class="split">
+            <section class="panel">
+              <div class="panel-bar"><span class="panel-title">${icon("users", 18)} 모둠원의 생각 모음</span><span class="chip">${icon(p.icon, 14)} ${esc(p.ko)}</span></div>
+              <div class="postits">${list.map((item, i) => postit(item.name, item.text || "아직 답변을 작성하지 않았어요.", i)).join("")}</div>
+            </section>
+            <section class="panel" style="${state.groupSubmitted ? "background:var(--pale);border-color:transparent" : ""}">
+              <div class="panel-bar"><span class="panel-title">${icon("quote", 18)} 우리 모둠의 학습자상 정의</span></div>
+              ${state.groupSubmitted ? submittedGroup(p) : composeGroup(p)}
+            </section>
+          </div>
+        </section>`;
+      document.getElementById("profile-select").addEventListener("change", e => {
+        state.groupProfileId = e.target.value;
+        state.groupSubmitted = false;
+        state.groupDef = "";
+        render();
+      });
+      document.getElementById("reset-groups").addEventListener("click", () => {
+        if (confirm("모둠을 재배정하면 현재 배정이 초기화됩니다. 계속할까요?")) {
+          state.groupAssignments = [];
+          saveStore();
+          render();
+        }
+      });
+      const defText = document.getElementById("group-def");
+      if (defText) {
+        const submit = document.getElementById("group-submit");
+        const count = document.getElementById("group-count");
+        const sync = () => { state.groupDef = defText.value; count.textContent = `${defText.value.length}/200`; submit.disabled = !defText.value.trim(); };
+        defText.addEventListener("input", sync);
+        submit.addEventListener("click", () => { state.groupSubmitted = true; saveCurrentStudent(); render(); });
+        sync();
+      }
+      document.getElementById("group-edit")?.addEventListener("click", () => { state.groupSubmitted = false; render(); });
+    }
+
+    function renderGroupSetup() {
+      const students = registeredStudents();
+      const total = students.length;
+      const perGroup = total ? Math.ceil(total / state.groupCount) : 0;
+      document.getElementById("main").innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">2단계 준비 · 모둠 설정</span>
+              <h1>모둠을 구성해요</h1>
+              <p>모둠 수를 설정하고 배정하면 등록된 학생 ${total}명이 무작위로 나눠져요.</p>
+            </div>
+            <span class="student-chip">${total}명 등록됨</span>
+          </header>
+          <div class="seat-layout">
+            <section class="panel">
+              <div class="panel-bar"><span class="panel-title">${icon("grid", 18)} 모둠 설정</span></div>
+              <div class="setup-grid">
+                <div class="field">
+                  <label for="gc-input">모둠 수</label>
+                  <input type="number" id="gc-input" min="2" max="10" value="${state.groupCount}" />
+                </div>
+                <div class="field">
+                  <label>모둠당 예상 인원</label>
+                  <input type="text" id="gc-pergroup" readonly value="${total ? perGroup + "명" : "학생 등록 필요"}" />
+                </div>
+              </div>
+              <button class="btn primary block" id="do-assign" style="margin-top:16px" ${!total ? "disabled" : ""}>${icon("users", 17)} 모둠 배정하기</button>
+              ${!total ? `<p class="hint" style="margin-top:8px">${icon("sparkles", 13)} 먼저 1단계에서 학생들이 이름을 등록해야 해요.</p>` : ""}
+            </section>
+            <section class="panel">
+              <div class="panel-bar"><span class="panel-title">${icon("users", 18)} 등록 학생 목록</span><span class="chip">${total}명</span></div>
+              <div class="team-members" style="gap:6px;flex-wrap:wrap">
+                ${total ? students.map(s => `<span class="member-pill" style="--soft:#eaf2fe;--pale:#f7fbff;--accent:#0066ff;--deep:#003e9c">${s.seat}번 ${esc(s.name)}</span>`).join("") : `<span style="color:var(--muted);font-size:13px">아직 등록된 학생이 없어요.</span>`}
+              </div>
+            </section>
+          </div>
+          <div id="group-preview"></div>
+        </section>`;
+      document.getElementById("gc-input").addEventListener("input", e => {
+        state.groupCount = Math.max(2, Math.min(10, Number(e.target.value) || 6));
+        saveStore();
+        const t = registeredStudents().length;
+        document.getElementById("gc-pergroup").value = t ? Math.ceil(t / state.groupCount) + "명" : "학생 등록 필요";
+      });
+      document.getElementById("do-assign")?.addEventListener("click", () => {
+        const sts = registeredStudents();
+        const shuffled = shuffle(sts);
+        const cnt = state.groupCount;
+        const gNames = ["무지개", "번개", "새싹", "별빛", "파도", "햇살", "구름", "달빛", "바람", "눈꽃"];
+        const assignments = Array.from({ length: cnt }, (_, i) => ({
+          no: i + 1, name: `${i + 1}모둠 · ${gNames[i] || (i + 1) + "모둠"}`, members: []
+        }));
+        shuffled.forEach((s, i) => assignments[i % cnt].members.push(s));
+        pendingAssignments = assignments;
+        const preview = document.getElementById("group-preview");
+        preview.innerHTML = `
+          <div style="margin-top:28px">
+            <div class="gallery-bar">
+              <span class="panel-title">${icon("grid", 18)} 배정 결과 미리보기</span>
+              <span class="gallery-hint">총 ${cnt}개 모둠 · ${sts.length}명</span>
+            </div>
+            <div class="teams" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+              ${assignments.map(g => `
+                <div class="team-card">
+                  <div class="team-title">
+                    <span>${icon("users", 14)} ${esc(g.name)}</span>
+                    <span class="chip">${g.members.length}명</span>
+                  </div>
+                  <div class="team-members">
+                    ${g.members.map(m => `<span class="member-pill" style="--soft:#eaf2fe;--pale:#f7fbff;--accent:#0066ff;--deep:#003e9c">${m.seat}번 ${esc(m.name)}</span>`).join("")}
+                  </div>
+                </div>`).join("")}
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+              <button class="btn" id="reassign-btn">${icon("reflect", 15)} 다시 배정</button>
+              <button class="btn primary" id="confirm-assign" style="flex:1">${icon("send", 17)} 배정 완료 · 모둠 활동 시작하기</button>
+            </div>
+          </div>`;
+        hydrateIcons();
+        document.getElementById("reassign-btn").addEventListener("click", () => document.getElementById("do-assign").click());
+        document.getElementById("confirm-assign").addEventListener("click", () => {
+          state.groupAssignments = pendingAssignments;
+          pendingAssignments = null;
+          saveStore();
+          render();
+        });
+      });
+    }
+
+    function postit(name, text, idx) {
+      const colors = ["lime", "blue", "pink", "orange"];
+      const turns = [-2.2, 1.6, -1.2, 2.4];
+      return `<article class="postit" style="${styleVars(colors[idx % colors.length])};transform:rotate(${turns[idx]}deg)">
+        <span class="pin"></span><p>${esc(text)}</p><span class="name"><span class="avatar">${esc(name[0])}</span>${esc(name)}</span>
+      </article>`;
+    }
+
+    function composeGroup(p) {
+      return `<p class="lead">모둠원의 생각을 살펴보고, <b style="color:var(--deep)">${esc(p.ko)}</b>을/를 우리 모둠만의 한 문장으로 정리해 보세요.</p>
+        <div class="compose-frame"><span class="prefix">${esc(p.ko)}은/는...</span><textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(state.groupDef)}</textarea></div>
+        <div class="meta"><span class="hint">${icon("sparkles", 13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
+        <button class="btn primary block" id="group-submit">${icon("send", 17)} 우리 모둠 정의 제출하기</button>`;
+    }
+
+    function submittedGroup(p) {
+      return `<div class="submitted"><span class="badge">${icon("check", 16)} 제출 완료</span><span style="color:var(--accent)">${icon("quote", 28)}</span>
+        <p class="def"><b style="color:var(--deep)">${esc(p.ko)}</b>은/는 ${esc(state.groupDef)}</p>
+        <div class="submitted-foot"><span class="hint">${icon("users", 14)} 우리 모둠 4명이 함께 정했어요</span><button class="btn small" id="group-edit">${icon("pencil", 14)} 다시 고치기</button></div></div>`;
+    }
+
+    function classMeaningDefault(profile) {
+      return `우리 5학년 3반에게 ${profile.ko}은/는 서로의 생각을 존중하며 함께 실천할 때 완성되는 모습입니다.`;
+    }
+
+    function groupsForClassProfile(profile) {
+      if (state.groupAssignments.length) {
+        return state.groupAssignments.map(g => {
+          const submitter = g.members.find(m => {
+            const d = state.roster[m.seat]?.data;
+            return d?.groupProfileId === profile.id && d?.groupSubmitted && d?.groupDef?.trim();
+          });
+          const def = submitter ? `${profile.ko}은/는 ${state.roster[submitter.seat].data.groupDef}` : "";
+          const isMine = g.members.some(m => m.seat === state.currentSeat);
+          return { ...g, color: profile.color, def, isMine, memberCount: g.members.length };
+        });
+      }
+      const defs = classDefinitions[profile.id] || [];
+      return classGroupTemplates.map((g, idx) => {
+        if (g.no === 5 && state.groupSubmitted && state.groupProfileId === profile.id && state.groupDef.trim()) {
+          return { ...g, color: profile.color, def: `${profile.ko}은/는 ${state.groupDef.trim()}`, isMine: true, memberCount: g.members };
+        }
+        return { ...g, color: profile.color, def: defs[idx] ? `${profile.ko}은/는 ${defs[idx]}` : "", memberCount: g.members };
+      });
+    }
+
+    function renderClass() {
+      const p = profiles.find(item => item.id === state.classProfileId) || profiles[6];
+      const groups = groupsForClassProfile(p);
+      const submitted = groups.filter(g => g.def.trim()).length;
+      const meaning = state.classMeanings[p.id] || classMeaningDefault(p);
+      document.getElementById("main").innerHTML = `
+        <section class="screen" style="${styleVars(p.color)}">
+          <header class="head">
+            <div>
+              <span class="step">3단계 · 반 전체 활동</span>
+              <h1>학습자상별로 우리 학급의 의미 정하기</h1>
+              <p>학습자상을 선택해 모둠별 의견을 살펴보고, 우리 학급만의 의미로 정리해요.</p>
+            </div>
+            <div class="lens">
+              <label for="class-profile-select">함께 정하는 학습자상</label>
+              <select id="class-profile-select">${profiles.map(item => `<option value="${item.id}" ${item.id === p.id ? "selected" : ""}>${esc(item.ko)}</option>`).join("")}</select>
+            </div>
+          </header>
+          <section class="declare">
+            <div class="declare-inner">
+              <div class="declare-label">${icon(p.icon, 15)} 5학년 3반 · ${esc(p.ko)}</div>
+              <span class="declare-title">우리 학급이 정한 ${esc(p.ko)}의 의미</span>
+              <div id="declare-view"><blockquote><span class="quote-mark">“</span>${esc(meaning)}<span class="quote-mark">”</span></blockquote><button class="btn small" id="edit-declare">${icon("pencil", 14)} 의미 다듬기</button></div>
+            </div>
+          </section>
+          <div class="gallery-bar">
+            <span class="panel-title">${icon("grid", 18)} ${esc(p.ko)} 모둠별 의견</span>
+            <span class="gallery-hint">${submitted}/${groups.length}개 모둠 의견을 보고 학급 의미를 정해요</span>
+          </div>
+          <div class="gallery">${groups.map(groupCard).join("")}</div>
+        </section>`;
+      document.getElementById("class-profile-select").addEventListener("change", e => {
+        state.classProfileId = e.target.value;
+        renderClass();
+        hydrateIcons();
+      });
+      document.getElementById("edit-declare").addEventListener("click", () => editDeclaration(p));
+    }
+
+    function groupCard(g) {
+      const n = g.memberCount ?? (Array.isArray(g.members) ? g.members.length : g.members);
+      return `<article class="gcard ${g.isMine ? "mine" : ""}" style="${styleVars(g.color)}">
+        <div class="gcard-top"><span class="gno">${g.no}</span><div><span class="gname">${esc(g.name)}</span><span class="members">${icon("users", 12)} ${n}명</span></div>${g.isMine ? '<span class="mine-label">우리 모둠</span>' : ""}</div>
+        <div class="gbody">${g.def.trim() ? `<p>${icon("quote", 14)} ${esc(g.def)}</p>` : '<div class="empty"><span class="spinner"></span>아직 의견을 모으는 중이에요</div>'}</div>
+      </article>`;
+    }
+
+    function editDeclaration(profile) {
+      const view = document.getElementById("declare-view");
+      const current = state.classMeanings[profile.id] || classMeaningDefault(profile);
+      view.innerHTML = `<textarea id="declare-text" maxlength="220">${esc(current)}</textarea><div class="edit-actions"><button class="btn small" id="declare-cancel">취소</button><button class="btn primary small" id="declare-save">${icon("check", 15)} 저장</button></div>`;
+      document.getElementById("declare-cancel").addEventListener("click", renderClass);
+      document.getElementById("declare-save").addEventListener("click", () => {
+        state.classMeanings[profile.id] = document.getElementById("declare-text").value.trim() || current;
+        renderClass();
+      });
+      document.getElementById("declare-text").focus();
+    }
+
+    function shortLabel(ko) {
+      return ko
+        .replace("을 지키는 사람", "").replace("을 가진 사람", "")
+        .replace("잡힌 사람", "").replace("이 많은 사람", "").replace("하는 사람", "")
+        .trim();
+    }
+
+    function classAvgScores() {
+      const entries = Object.values(state.roster).filter(r => r?.name && r?.data?.selfScores && Object.keys(r.data.selfScores).length);
+      if (!entries.length) return {};
+      const sums = {}, counts = {};
+      entries.forEach(r => {
+        profiles.forEach(p => {
+          const v = r.data.selfScores[p.id];
+          if (v) { sums[p.id] = (sums[p.id] || 0) + v; counts[p.id] = (counts[p.id] || 0) + 1; }
+        });
+      });
+      const avgs = {};
+      profiles.forEach(p => { avgs[p.id] = counts[p.id] ? +(sums[p.id] / counts[p.id]).toFixed(1) : 0; });
+      return avgs;
+    }
+
+    function radarChart(myScores, avgScores) {
+      const W = 300, H = 300, cx = 150, cy = 150, R = 100, n = profiles.length;
+      const startAngle = -Math.PI / 2;
+      function ptOf(idx, score) {
+        const a = startAngle + (idx / n) * 2 * Math.PI;
+        const r = (score / 10) * R;
+        return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      }
+      function polyPath(scores) {
+        return profiles.map((p, i) => {
+          const [x, y] = ptOf(i, scores[p.id] || 0);
+          return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(" ") + " Z";
+      }
+      const gridPaths = [2, 4, 6, 8, 10].map(lv => {
+        const d = profiles.map((_, i) => {
+          const [x, y] = ptOf(i, lv);
+          return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(" ") + " Z";
+        return { d, lv };
+      });
+      const axes = profiles.map((_, i) => {
+        const [x, y] = ptOf(i, 10);
+        return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(112,115,124,.14)" stroke-width="1"/>`;
+      });
+      const labelR = R + 22;
+      const labels = profiles.map((p, i) => {
+        const a = startAngle + (i / n) * 2 * Math.PI;
+        const lx = cx + labelR * Math.cos(a), ly = cy + labelR * Math.sin(a);
+        const anchor = lx < cx - 4 ? "end" : lx > cx + 4 ? "start" : "middle";
+        return `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="10" font-weight="800" fill="rgba(37,38,41,.78)">${esc(shortLabel(p.ko))}</text>`;
+      });
+      const levelLabels = [2, 4, 6, 8, 10].map(lv => {
+        const [lx, ly] = ptOf(0, lv);
+        return `<text x="${(lx + 3).toFixed(1)}" y="${(ly - 2).toFixed(1)}" text-anchor="start" dominant-baseline="auto" font-size="9" fill="rgba(112,115,124,.5)" font-weight="700">${lv}</text>`;
+      });
+      const hasMyData = profiles.some(p => myScores[p.id]);
+      const hasAvgData = profiles.some(p => avgScores[p.id]);
+      const myPath = polyPath(myScores);
+      const avgPath = polyPath(avgScores);
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block">
+        ${gridPaths.map(({ d, lv }) => `<path d="${d}" fill="none" stroke="rgba(112,115,124,.${lv === 10 ? "18" : "1"})" stroke-width="${lv === 10 ? 1.5 : 1}"/>`).join("")}
+        ${axes.join("")}
+        ${hasAvgData ? `<path d="${avgPath}" fill="rgba(112,115,124,.09)" stroke="rgba(112,115,124,.45)" stroke-width="1.5" stroke-dasharray="5,3"/>` : ""}
+        ${hasMyData ? `<path d="${myPath}" fill="rgba(0,102,255,.14)" stroke="#0066ff" stroke-width="2.5" stroke-linejoin="round"/>` : ""}
+        ${hasMyData ? profiles.map((p, i) => { const s = myScores[p.id] || 0; if (!s) return ""; const [x, y] = ptOf(i, s); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#0066ff" stroke="#fff" stroke-width="1.5"/>`; }).join("") : ""}
+        ${labels.join("")}
+        ${levelLabels.join("")}
+      </svg>`;
+    }
+
+    function selfCard(p) {
+      const meaning = state.classMeanings[p.id] || classMeaningDefault(p);
+      const score = state.selfScores[p.id] || 0;
+      return `<section class="panel" style="${styleVars(p.color)}">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <span class="card-icon" style="flex:0 0 auto;width:40px;height:40px;border-radius:10px">${icon(p.icon, 22)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+              <span style="color:var(--ink);font-size:15px;font-weight:850">${esc(p.ko)}</span>
+              ${score ? `<span class="chip" style="background:var(--accent);color:#fff">${score}점</span>` : `<span class="chip">미평가</span>`}
+            </div>
+            <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.55;font-style:italic">"${esc(meaning)}"</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${Array.from({ length: 10 }, (_, i) => {
+            const v = i + 1;
+            const sel = score === v;
+            return `<button data-score-btn data-profile-id="${p.id}" data-score="${v}"
+              style="width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:900;border:0;cursor:pointer;
+              background:${sel ? "var(--accent)" : "rgba(112,115,124,.09)"};
+              color:${sel ? "#fff" : "rgba(55,56,60,.55)"};">${v}</button>`;
+          }).join("")}
+        </div>
+      </section>`;
+    }
+
+    function renderSelf() {
+      const avgScores = classAvgScores();
+      const rated = profiles.filter(p => state.selfScores[p.id]).length;
+      document.getElementById("main").innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">4단계 · 자기 평가</span>
+              <h1>나의 학습자상 능력치 평가하기</h1>
+              <p>학급에서 함께 정한 의미를 읽고, 내가 생각하는 나의 능력치를 1~10으로 평가해요.</p>
+            </div>
+            <div class="tally">
+              <span class="tally-num">${rated}<i>/10</i></span>
+              <span class="tally-label">평가 완료</span>
+            </div>
+          </header>
+          <div class="seat-layout">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              ${profiles.map(p => selfCard(p)).join("")}
+            </div>
+            <div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:16px">
+              <section class="panel">
+                <div class="panel-bar">
+                  <span class="panel-title">${icon("activity", 18)} 나의 학습자 프로필</span>
+                  <span class="chip">${icon("star", 13)} ${rated}/10</span>
+                </div>
+                <div style="display:flex;justify-content:center;padding:16px 0 8px">
+                  ${radarChart(state.selfScores, avgScores)}
+                </div>
+                <div style="display:flex;gap:20px;justify-content:center;padding:10px 0 4px;border-top:1px solid var(--line);flex-wrap:wrap">
+                  <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--ink)">
+                    <svg width="20" height="3" viewBox="0 0 20 3" style="flex:0 0 auto"><rect width="20" height="3" rx="1.5" fill="#0066ff"/></svg>나의 능력치
+                  </span>
+                  <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--muted)">
+                    <svg width="20" height="3" viewBox="0 0 20 3" style="flex:0 0 auto"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="rgba(112,115,124,.5)" stroke-width="1.5" stroke-dasharray="5,3"/></svg>학급 평균
+                  </span>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>`;
+      document.querySelectorAll("[data-score-btn]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.selfScores[btn.dataset.profileId] = Number(btn.dataset.score);
+          saveCurrentStudent();
+          renderSelf();
+        });
+      });
+    }
+
+    function hydrateIcons() {
+      document.querySelectorAll("[data-icon]").forEach(el => { el.innerHTML = icon(el.dataset.icon, 18); });
+    }
+
+    document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => { state.tab = btn.dataset.tab; render(); }));
+    hydrateIcons();
+    render();
+  </script>
+</body>
+</html>
