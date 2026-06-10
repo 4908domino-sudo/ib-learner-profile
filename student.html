@@ -112,18 +112,63 @@
     .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #dbdcdf; border-top-color: #989ba2; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     svg { flex: 0 0 auto; }
-    @media (max-width: 960px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 860px) { .split, .seat-layout { grid-template-columns: 1fr; } }
-    @media (max-width: 680px) {
-      .topbar { justify-content: center; }
+
+    /* 점수 버튼 - 클래스 기반으로 반응형 처리 */
+    .score-btn { width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:900;border:0;cursor:pointer;touch-action:manipulation; }
+
+    /* ── 태블릿 최적화 (1024px 이하 = 태블릿 주 사용환경) ── */
+    @media (max-width: 1024px) {
+      .grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .seat { min-height: 84px; font-size: 17px; }
+      .seat small { font-size: 12px; }
+      .seat-grid { grid-template-columns: repeat(5, 1fr); gap: 10px; }
+      .card { min-height: 160px; padding: 18px; }
+      .tab { padding: 10px 18px; font-size: 15px; }
+      .tab-n { width: 24px; height: 24px; font-size: 13px; }
+      .btn { padding: 14px 20px; font-size: 15px; min-height: 50px; }
+      .btn.small { min-height: 42px; padding: 10px 16px; font-size: 14px; }
+      .btn.primary.block { min-height: 54px; font-size: 16px; }
+      select { min-height: 48px; font-size: 15px; padding: 10px 16px; }
+      input[type="text"], input[type="number"] { padding: 14px 16px; font-size: 16px; min-height: 50px; }
+      textarea { font-size: 16px; min-height: 140px; }
+      .compose-frame textarea { min-height: 130px; }
+      .score-btn { width: 44px; height: 44px; border-radius: 10px; font-size: 15px; }
+      .panel { padding: 20px; border-radius: 20px; }
+      .head h1 { font-size: 24px; }
+      .head p { font-size: 15px; }
+      .ring { width: 72px; height: 72px; }
+      .ring span { width: 56px; height: 56px; font-size: 20px; }
+      .postit { min-height: 130px; padding: 18px 14px 14px; }
+      .postit p { font-size: 14px; }
+    }
+
+    /* ── 태블릿 세로 / 큰 폰 (860px) ── */
+    @media (max-width: 860px) {
+      .split, .seat-layout { grid-template-columns: 1fr; }
+      .seat-grid { grid-template-columns: repeat(6, 1fr); }
+    }
+
+    /* ── 모바일 (640px 이하) ── */
+    @media (max-width: 640px) {
+      .topbar { justify-content: center; padding: 10px 14px; gap: 10px; }
+      .brand-title { font-size: 14px; }
       .tabs { width: 100%; justify-content: space-between; }
-      .tab { flex: 1; justify-content: center; padding: 8px 10px; }
+      .tab { flex: 1; justify-content: center; padding: 10px 6px; }
       .tab-label { display: none; }
-      .screen { padding: 20px 16px 48px; }
-      .head h1 { font-size: 22px; }
-      .grid { grid-template-columns: repeat(2, 1fr); }
-      .postits { grid-template-columns: 1fr; }
-      .seat-grid { grid-template-columns: repeat(4, 1fr); }
+      .tab-n { width: 26px; height: 26px; }
+      .screen { padding: 16px 12px 56px; }
+      .head { margin-bottom: 16px; }
+      .head h1 { font-size: 20px; }
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .card { min-height: 140px; padding: 14px; }
+      .seat-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+      .seat { min-height: 72px; font-size: 15px; }
+      .postits { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .postit { min-height: 110px; }
+      /* 모바일 모달: 바텀시트 */
+      .modal-back { padding: 0; align-items: flex-end; }
+      .modal { width: 100%; border-radius: 24px 24px 0 0; max-height: 90dvh; overflow-y: auto; }
+      .score-btn { width: 40px; height: 40px; font-size: 14px; }
     }
   </style>
 </head>
@@ -543,7 +588,7 @@
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${Array.from({length:10},(_,i)=>{
             const v=i+1,sel=score===v;
-            return `<button data-score-btn data-profile-id="${p.id}" data-score="${v}" style="width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:900;border:0;cursor:pointer;background:${sel?'var(--accent)':'rgba(112,115,124,.09)'};color:${sel?'#fff':'rgba(55,56,60,.55)'};">${v}</button>`;
+            return `<button class="score-btn" data-score-btn data-profile-id="${p.id}" data-score="${v}" style="background:${sel?'var(--accent)':'rgba(112,115,124,.09)'};color:${sel?'#fff':'rgba(55,56,60,.55)'};">${v}</button>`;
           }).join('')}
         </div>
       </section>`;
