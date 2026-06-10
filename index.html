@@ -51,6 +51,8 @@
     .recent-name{font-size:14px;font-weight:800;color:var(--ink)}
     .recent-meta{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
     .recent-arrow{color:var(--muted);font-size:18px;flex:0 0 auto}
+    .recent-del{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;flex:0 0 auto;transition:background .15s,color .15s}
+    .recent-del:hover{background:#fee2e2;color:#c0152a}
     .section-title{font-size:12px;font-weight:750;color:var(--muted);margin-bottom:8px;margin-top:24px}
     @media(max-width:500px){.card{padding:28px 20px}.row{grid-template-columns:1fr}}
   </style>
@@ -86,6 +88,12 @@
       try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
     }
 
+    function deleteRecent(id) {
+      const list = getRecent().filter(c => c.id !== id);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+      renderForm();
+    }
+
     function renderForm() {
       const recent = getRecent();
       document.getElementById('app').innerHTML = `
@@ -102,12 +110,13 @@
           <div class="section-title">최근 만든 학급</div>
           <div class="recent-list">
             ${recent.map(c => `
-              <div class="recent-item" data-cls='${JSON.stringify(c)}'>
-                <div>
+              <div class="recent-item" data-cls='${JSON.stringify(c)}' data-id="${c.id}">
+                <div style="flex:1;min-width:0">
                   <div class="recent-name">${esc(c.name)}</div>
                   <div class="recent-meta">학생 ${c.student_count}명 · 모둠 ${c.group_count}개</div>
                 </div>
                 <span class="recent-arrow">›</span>
+                <button class="recent-del" data-del-id="${c.id}" title="목록에서 삭제">✕</button>
               </div>`).join('')}
           </div>` : ''}
       `;
@@ -134,6 +143,12 @@
         if (error) { alert('오류: ' + error.message); btn.disabled = false; btn.textContent = '학급 만들기'; return; }
         saveRecent(data);
         renderResult(data);
+      });
+      document.querySelectorAll('.recent-del').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          deleteRecent(btn.dataset.delId);
+        });
       });
       document.querySelectorAll('.recent-item').forEach(el => {
         el.addEventListener('click', () => {
