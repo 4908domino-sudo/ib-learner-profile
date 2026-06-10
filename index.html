@@ -45,6 +45,13 @@
     .spin-wrap{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px 0;color:var(--muted);font-size:14px}
     .spin{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);animation:sp .7s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
+    .recent-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .recent-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;transition:border-color .15s,background .15s}
+    .recent-item:hover{border-color:var(--blue);background:#f7fbff}
+    .recent-name{font-size:14px;font-weight:800;color:var(--ink)}
+    .recent-meta{font-size:12px;color:var(--muted);font-weight:600;margin-top:2px}
+    .recent-arrow{color:var(--muted);font-size:18px;flex:0 0 auto}
+    .section-title{font-size:12px;font-weight:750;color:var(--muted);margin-bottom:8px;margin-top:24px}
     @media(max-width:500px){.card{padding:28px 20px}.row{grid-template-columns:1fr}}
   </style>
 </head>
@@ -67,7 +74,20 @@
     const checkSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
     const logoHtml = `<div class="logo"><div class="logo-mark">${sparkSvg}</div><div><div class="logo-title">IB 학습자상 알아보기</div><div class="logo-sub">실시간 학급 활동 플랫폼</div></div></div>`;
 
+    const RECENT_KEY = 'ib_recent_classrooms';
+
+    function saveRecent(cls) {
+      const list = getRecent().filter(c => c.id !== cls.id);
+      list.unshift({ id: cls.id, name: cls.name, student_count: cls.student_count, group_count: cls.group_count, created_at: cls.created_at });
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
+    }
+
+    function getRecent() {
+      try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+    }
+
     function renderForm() {
+      const recent = getRecent();
       document.getElementById('app').innerHTML = `
         ${logoHtml}
         <h2>새 학급 만들기</h2>
@@ -78,6 +98,18 @@
           <div class="field"><label for="grp-cnt">모둠 수</label><input id="grp-cnt" type="number" min="2" max="10" placeholder="예: 5"></div>
         </div>
         <button class="btn-primary" id="create-btn" disabled>학급 만들기</button>
+        ${recent.length ? `
+          <div class="section-title">최근 만든 학급</div>
+          <div class="recent-list">
+            ${recent.map(c => `
+              <div class="recent-item" data-cls='${JSON.stringify(c)}'>
+                <div>
+                  <div class="recent-name">${esc(c.name)}</div>
+                  <div class="recent-meta">학생 ${c.student_count}명 · 모둠 ${c.group_count}개</div>
+                </div>
+                <span class="recent-arrow">›</span>
+              </div>`).join('')}
+          </div>` : ''}
       `;
       const nameIn = document.getElementById('cls-name');
       const stuIn = document.getElementById('stu-cnt');
@@ -100,7 +132,14 @@
           group_count: parseInt(grpIn.value)
         }).select().single();
         if (error) { alert('오류: ' + error.message); btn.disabled = false; btn.textContent = '학급 만들기'; return; }
+        saveRecent(data);
         renderResult(data);
+      });
+      document.querySelectorAll('.recent-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const cls = JSON.parse(el.dataset.cls);
+          renderResult(cls);
+        });
       });
       nameIn.focus();
     }
