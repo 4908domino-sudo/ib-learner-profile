@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IB 학습자상 알아보기</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --white: #fff;--ink: #171719;--text: rgba(37, 38, 41, .78);--muted: rgba(55, 56, 60, .55);
+      --line: rgba(112, 115, 124, .22);--bg: #f7f7f8;--blue: #0066ff;
+      --shadow: 0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(112,115,124,.07);
+      --shadow-strong: 0 10px 28px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.06);
+      font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+    body { -webkit-font-smoothing: antialiased; }
+    button, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; background: var(--white); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: var(--blue); box-shadow: var(--shadow-strong); }
+    .brand-title { display: block; color: var(--ink); font-size: 16px; font-weight: 800; line-height: 1.2; }
+    .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--bg); }
+    .tab { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 750; }
+    .tab:hover { background: rgba(112,115,124,.08); color: var(--text); }
+    .tab.active { background: var(--white); color: #005eeb; box-shadow: var(--shadow); }
+    .tab-n { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(112,115,124,.16); color: var(--muted); font-size: 12px; }
+    .tab.active .tab-n { background: var(--blue); color: #fff; }
+    .seat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: #eaf2fe; color: #0054d1; font-size: 12px; font-weight: 850; }
+    main { flex: 1; }
+    .screen { max-width: 1180px; margin: 0 auto; padding: 32px 24px 64px; animation: rise .25s ease both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+    .step { display: inline-block; margin-bottom: 8px; padding: 4px 10px; border-radius: 999px; background: #eaf2fe; color: var(--blue); font-size: 12px; font-weight: 850; }
+    h1, h2, h3, p { margin-top: 0; }
+    .head h1 { margin-bottom: 6px; color: var(--ink); font-size: 26px; }
+    .head p { margin-bottom: 0; color: var(--muted); font-size: 14px; }
+    .progress { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ring { --pct: 0; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--blue) calc(var(--pct) * 1%), #e1e2e4 0); }
+    .ring span { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: var(--white); color: var(--ink); font-size: 18px; font-weight: 850; }
+    .ring i { color: var(--muted); font-size: 11px; font-style: normal; }
+    .progress-label { color: var(--muted); font-size: 11px; font-weight: 750; }
+    .tabs.is-disabled .tab:not(.active) { opacity: .4; pointer-events: none; }
+    .seat-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr); gap: 20px; align-items: start; }
+    .seat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .seat { min-height: 68px; border: 1px solid var(--line); border-radius: 14px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--ink); font-weight: 900; box-shadow: var(--shadow); font-size: 15px; }
+    .seat:hover, .seat.selected { border-color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue), var(--shadow); }
+    .seat small { min-height: 16px; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .seat.selected small { color: #005eeb; }
+    .seat.active-seat { background: #eaf2fe; }
+    .panel { border: 1px solid var(--line); border-radius: 22px; padding: 20px; background: #fff; }
+    .panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .panel-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 15px; font-weight: 850; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--soft, #eaf2fe); color: var(--deep, #003e9c); font-size: 12px; font-weight: 850; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { color: var(--ink); font-size: 13px; font-weight: 850; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-weight: 750; outline: none; }
+    input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #eaf2fe; }
+    .notice { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px; background: #f7fbff; color: #0054d1; border: 1px solid #c9defe; font-size: 14px; font-weight: 750; }
+    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+    .card { position: relative; min-height: 178px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--white); text-align: left; transition: transform .16s ease, box-shadow .16s ease; }
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-strong); }
+    .card.answered { border-color: transparent; box-shadow: inset 0 0 0 2px var(--accent); background: var(--soft); }
+    .card-icon { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 6px; background: var(--soft); color: var(--accent); }
+    .card.answered .card-icon { background: #fff; }
+    .ko { color: var(--ink); font-size: 16px; font-weight: 850; }
+    .en { color: rgba(55,56,60,.35); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+    .cta { margin-top: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--accent); font-size: 12px; font-weight: 850; }
+    .check { position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: var(--shadow); }
+    .modal-back { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; background: rgba(23,23,25,.52); }
+    .modal { width: min(100%, 460px); overflow: hidden; position: relative; border-radius: 28px; background: var(--white); box-shadow: 0 12px 36px rgba(0,0,0,.18); }
+    .modal-x { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.7); color: var(--muted); }
+    .modal-head { display: flex; gap: 16px; align-items: center; padding: 24px; background: var(--soft); }
+    .modal-icon { flex: 0 0 auto; width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: #fff; color: var(--accent); box-shadow: var(--shadow); }
+    .modal-en { display: block; color: var(--deep); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+    .modal-title { margin: 2px 0 0; color: var(--ink); font-size: 19px; line-height: 1.35; }
+    .modal-body { padding: 20px 24px 8px; }
+    textarea { width: 100%; min-height: 120px; resize: vertical; padding: 16px; border-radius: 12px; border: 1px solid var(--line); outline: none; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+    textarea:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 3px #eaf2fe; }
+    .meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+    .hint, .count { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .actions { display: flex; gap: 10px; padding: 16px 24px 24px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 850; background: rgba(112,115,124,.08); color: var(--text); }
+    .btn:hover { filter: brightness(1.04); }
+    .btn.primary { background: var(--accent, var(--blue)); color: #fff; }
+    .btn:disabled { background: #f4f4f5 !important; color: rgba(55,56,60,.25); cursor: not-allowed; filter: none; }
+    .actions .btn { flex: 1; }
+    .actions .ghost { flex: 0 0 auto; }
+    .lens { display: flex; flex-direction: column; gap: 4px; }
+    .lens label { color: var(--muted); font-size: 11px; font-weight: 750; }
+    select { min-width: 180px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-weight: 800; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .postits { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .postit { position: relative; min-height: 116px; display: flex; flex-direction: column; gap: 8px; padding: 16px 12px 12px; border-radius: 8px; background: var(--soft); box-shadow: var(--shadow); }
+    .pin { position: absolute; top: 8px; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translateX(-50%); background: var(--accent); }
+    .postit p { flex: 1; margin: 6px 0 0; color: #292a2d; font-size: 13px; font-weight: 650; line-height: 1.5; }
+    .avatar { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; margin-right: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 850; }
+    .name { color: #46474c; font-size: 12px; font-weight: 850; }
+    .compose-frame { padding: 16px; border: 2px dashed var(--accent); border-radius: 16px; background: #fff; }
+    .prefix { display: block; margin-bottom: 8px; color: var(--deep); font-size: 14px; font-weight: 850; }
+    .compose-frame textarea { min-height: 126px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+    .lead { color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .block { width: 100%; margin-top: 16px; }
+    .submitted { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 4px 4px; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 850; }
+    .def { color: var(--ink); font-size: 19px; line-height: 1.55; font-weight: 850; }
+    .submitted-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding-top: 16px; border-top: 1px solid var(--line); }
+    .small { padding: 8px 12px; border-radius: 8px; font-size: 13px; }
+    .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #dbdcdf; border-top-color: #989ba2; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    svg { flex: 0 0 auto; }
+    @media (max-width: 960px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 860px) { .split, .seat-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 680px) {
+      .topbar { justify-content: center; }
+      .tabs { width: 100%; justify-content: space-between; }
+      .tab { flex: 1; justify-content: center; padding: 8px 10px; }
+      .tab-label { display: none; }
+      .screen { padding: 20px 16px 48px; }
+      .head h1 { font-size: 22px; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .postits { grid-template-columns: 1fr; }
+      .seat-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" data-icon="sparkles"></div>
+        <span class="brand-title" id="brand-title">IB 학습자상 알아보기</span>
+      </div>
+      <nav class="tabs is-disabled" aria-label="활동 단계">
+        <button class="tab active" data-tab="personal"><span class="tab-n">1</span><span class="tab-label">개인 활동</span></button>
+        <button class="tab" data-tab="group"><span class="tab-n">2</span><span class="tab-label">모둠 활동</span></button>
+        <button class="tab" data-tab="self"><span class="tab-n">3</span><span class="tab-label">자기 평가</span></button>
+      </nav>
+      <span class="seat-chip" id="seat-chip" style="display:none"></span>
+    </header>
+    <main id="main">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:80px 20px;color:rgba(55,56,60,.55);font-size:14px">
+        <span style="width:18px;height:18px;border-radius:50%;border:2px solid #dbdcdf;border-top-color:#0066ff;animation:spin 1s linear infinite;display:inline-block"></span>
+        학급 정보를 불러오는 중...
+      </div>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+
+  <script>
+    const SB_URL = 'https://nykefhqormkhmqebvpzo.supabase.co';
+    const SB_KEY = 'sb_publishable_Ro8qHUtEjxqfNNObWb4quw_yV1-8KLO';
+    const { createClient } = supabase;
+    const sb = createClient(SB_URL, SB_KEY);
+
+    const classroomId = new URLSearchParams(window.location.search).get('classroom');
+
+    const icons = {
+      sparkles: '<path d="M9.9 14.7 9 19l-.9-4.3a3 3 0 0 0-2.7-2.7L1 11l4.3-.9a3 3 0 0 0 2.7-2.7L9 3l.9 4.3a3 3 0 0 0 2.7 2.7L17 11l-4.3.9a3 3 0 0 0-2.8 2.8z"/><path d="M18 16.5 18.5 19l.5-2.5L21.5 16 19 15.5 18.5 13 18 15.5 15.5 16z"/>',
+      compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+      lightbulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+      message: '<path d="M21 11.5a8.5 8.5 0 0 1-11.3 8L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z"/>',
+      scale: '<path d="M12 3v18"/><path d="M5 7h14"/><path d="m5 7-3 6h6Z"/><path d="m19 7-3 6h6Z"/><path d="M7 21h10"/>',
+      globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"/>',
+      heart: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 12 5 5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.1 3 5.5l7 7Z"/>',
+      mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+      activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      reflect: '<circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2m-15.7 5.7-1.4 1.4m14.2-14.2-1.4 1.4m0 11.4 1.4 1.4M4.9 4.9l1.4 1.4"/>',
+      check: '<polyline points="20 6 9 17 4 12"/>',
+      pencil: '<path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+      plus: '<path d="M5 12h14M12 5v14"/>',
+      close: '<path d="M18 6 6 18M6 6l12 12"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
+      quote: '<path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2.5a.5.5 0 0 1 .5.5v.5a2 2 0 0 1-2 2 1 1 0 0 0 0 2 4 4 0 0 0 4-4V5a2 2 0 0 0-2-2z"/><path d="M6 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2.5a.5.5 0 0 1 .5.5v.5a2 2 0 0 1-2 2 1 1 0 0 0 0 2 4 4 0 0 0 4-4V5a2 2 0 0 0-2-2z"/>',
+      send: '<path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.7l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/>',
+      grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>'
+    };
+
+    const ramps = {
+      blue: ["#eaf2fe","#f7fbff","#0066ff","#003e9c"],
+      violet: ["#f0ecfe","#fbfaff","#6541f2","#3a16c9"],
+      purple: ["#f9edff","#fefbff","#cb59ff","#861cb8"],
+      cyan: ["#defaff","#f7feff","#00bdde","#006f82"],
+      green: ["#d9ffe6","#f2fff6","#00bf40","#006e25"],
+      lightBlue: ["#e5f6fe","#f7fdff","#00aeff","#006796"],
+      pink: ["#feecfb","#fffafe","#e846cd","#a81690"],
+      orange: ["#fef4e6","#fffcf7","#ff9200","#9c5800"],
+      lime: ["#e6ffd4","#f8fff2","#58cf04","#347d00"],
+      redOrange: ["#feeee5","#fffaf7","#ff5e00","#943600"]
+    };
+
+    const profiles = [
+      ["inquirers","탐구하는 사람","Inquirers","compass","blue","궁금한 것을 스스로 찾아보고 질문해요."],
+      ["knowledgeable","지식이 많은 사람","Knowledgeable","book","violet","여러 분야를 깊고 넓게 배워요."],
+      ["thinkers","생각하는 사람","Thinkers","lightbulb","purple","문제를 꼼꼼히 따져보고 해결해요."],
+      ["communicators","소통하는 사람","Communicators","message","cyan","내 생각을 잘 전하고 남의 말도 들어요."],
+      ["principled","원칙을 지키는 사람","Principled","scale","green","정직하고 약속과 규칙을 지켜요."],
+      ["openminded","열린 마음을 가진 사람","Open-minded","globe","lightBlue","다른 생각과 문화를 존중해요."],
+      ["caring","배려하는 사람","Caring","heart","pink","친구의 마음을 살피고 도와줘요."],
+      ["risktakers","도전하는 사람","Risk-takers","mountain","orange","어려워도 용기 있게 시도해요."],
+      ["balanced","균형 잡힌 사람","Balanced","activity","lime","공부와 놀이, 몸과 마음의 균형을 챙겨요."],
+      ["reflective","성찰하는 사람","Reflective","reflect","redOrange","내가 한 일을 돌아보고 더 나아져요."]
+    ].map(([id,ko,en,ic,color,desc]) => ({id,ko,en,icon:ic,color,desc}));
+
+    const groupNames = ["무지개","번개","새싹","별빛","파도","햇살","구름","달빛","바람","눈꽃"];
+
+    function icon(name, size=20, fill="none") {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||''}</svg>`;
+    }
+    function styleVars(color) {
+      const [soft,pale,accent,deep] = ramps[color];
+      return `--soft:${soft};--pale:${pale};--accent:${accent};--deep:${deep}`;
+    }
+    function esc(text) { return String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+    function hydrateIcons() {
+      document.querySelectorAll('[data-icon]').forEach(el => {
+        const name = el.dataset.icon;
+        if (icons[name]) el.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
+      });
+    }
+
+    // App state
+    let classroom = null;
+    let mySeat = null;
+    let currentTab = 'personal';
+    const allResponses = {};
+    const classMeanings = {};
+
+    function myData() { return allResponses[mySeat] || {}; }
+    function myAnswers() { return myData().personal_answers || {}; }
+    function myScores() { return myData().self_scores || {}; }
+
+    function getGroupInfo(seat) {
+      const gs = Math.ceil(classroom.student_count / classroom.group_count);
+      const gno = Math.ceil(seat / gs);
+      const start = (gno - 1) * gs + 1;
+      const end = Math.min(start + gs - 1, classroom.student_count);
+      return { no: gno, name: `${gno}모둠 · ${groupNames[gno-1]||gno+'모둠'}`, seats: Array.from({length:end-start+1},(_,i)=>start+i) };
+    }
+
+    // Supabase save helpers
+    async function upsertMe(fields) {
+      allResponses[mySeat] = { classroom_id: classroomId, seat_number: mySeat, ...(allResponses[mySeat]||{}), ...fields };
+      await sb.from('student_responses').upsert(
+        { classroom_id: classroomId, seat_number: mySeat, ...fields },
+        { onConflict: 'classroom_id,seat_number' }
+      );
+    }
+
+    // Render
+    function render() {
+      const tabsEl = document.querySelector('.tabs');
+      tabsEl.classList.toggle('is-disabled', !mySeat);
+      if (!mySeat) { renderSeatScreen(); hydrateIcons(); return; }
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === currentTab));
+      if (currentTab === 'personal') renderPersonal();
+      else if (currentTab === 'group') renderGroup();
+      else if (currentTab === 'self') renderSelf();
+      hydrateIcons();
+    }
+
+    function renderSeatScreen() {
+      const total = classroom.student_count;
+      document.getElementById('main').innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">시작 · 번호 선택</span>
+              <h1>내 번호를 선택하세요</h1>
+              <p>${esc(classroom.name)} 학생입니다. 내 번호를 찾아 클릭한 뒤 시작하세요.</p>
+            </div>
+          </header>
+          <div class="seat-layout">
+            <section class="panel">
+              <div class="seat-grid">
+                ${Array.from({length:total},(_,i)=>{
+                  const no = i+1;
+                  const resp = allResponses[no];
+                  const busy = resp && Object.keys(resp.personal_answers||{}).length > 0;
+                  return `<button class="seat${busy?' active-seat':''}" data-seat="${no}">
+                    <span>${no}번</span>
+                    <small>${busy?'활동 중':'비어 있음'}</small>
+                  </button>`;
+                }).join('')}
+              </div>
+            </section>
+            <section class="panel">
+              <div id="seat-form-area">
+                <div class="notice" data-icon="sparkles"> 왼쪽에서 내 번호를 선택하세요.</div>
+              </div>
+            </section>
+          </div>
+        </section>`;
+      document.querySelectorAll('[data-seat]').forEach(btn => btn.addEventListener('click', () => showSeatForm(+btn.dataset.seat)));
+    }
+
+    function showSeatForm(seat) {
+      document.querySelectorAll('.seat').forEach(b => b.classList.toggle('selected', +b.dataset.seat === seat));
+      document.getElementById('seat-form-area').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field">
+            <label>${seat}번으로 입장</label>
+            <input type="text" id="sname" placeholder="이름 입력 (선택)" maxlength="20">
+          </div>
+          <button class="btn primary" id="start-btn" style="width:100%;justify-content:center">
+            ${icon('send',17)} 시작하기
+          </button>
+          <p class="hint">이전에 활동한 번호라면 이어서 할 수 있습니다.</p>
+        </div>`;
+      const nameIn = document.getElementById('sname');
+      document.getElementById('start-btn').addEventListener('click', () => {
+        mySeat = seat;
+        sessionStorage.setItem('ib_seat_' + classroomId, seat);
+        const chip = document.getElementById('seat-chip');
+        chip.textContent = `${seat}번 · ${nameIn.value.trim() || '학생'}`;
+        chip.style.display = '';
+        currentTab = 'personal';
+        render();
+      });
+      nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('start-btn').click(); });
+      nameIn.focus();
+    }
+
+    function renderPersonal() {
+      const answers = myAnswers();
+      const done = profiles.filter(p => answers[p.id]?.trim()).length;
+      const pct = Math.round(done / profiles.length * 100);
+      document.getElementById('main').innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">1단계 · 개인 활동</span>
+              <h1>나만의 학습자상 사전 만들기</h1>
+              <p>10가지 학습자상을 하나씩 눌러서 내가 생각하는 뜻을 직접 적어 보세요.</p>
+            </div>
+            <div class="progress">
+              <div class="ring" style="--pct:${pct}"><span>${done}<i>/10</i></span></div>
+              <span class="progress-label">${pct===100?'모두 완성!':'작성 완료'}</span>
+            </div>
+          </header>
+          <div class="grid">
+            ${profiles.map(p => {
+              const answered = Boolean(answers[p.id]?.trim());
+              return `<button class="card ${answered?'answered':''}" style="${styleVars(p.color)}" data-profile="${p.id}">
+                ${answered?`<span class="check">${icon('check',15)}</span>`:''}
+                <span class="card-icon">${icon(p.icon,26)}</span>
+                <span class="ko">${esc(p.ko)}</span>
+                <span class="en">${esc(p.en)}</span>
+                <span class="cta">${icon(answered?'pencil':'plus',14)} ${answered?'내 생각 보기':'내 생각 쓰기'}</span>
+              </button>`;
+            }).join('')}
+          </div>
+        </section>`;
+      document.querySelectorAll('[data-profile]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.profile)));
+    }
+
+    function openModal(id) {
+      const p = profiles.find(item => item.id === id);
+      const answers = myAnswers();
+      const root = document.getElementById('modal-root');
+      root.innerHTML = `
+        <div class="modal-back">
+          <section class="modal" style="${styleVars(p.color)}">
+            <button class="modal-x">${icon('close',20)}</button>
+            <div class="modal-head">
+              <span class="modal-icon">${icon(p.icon,30)}</span>
+              <div><span class="modal-en">${esc(p.en)}</span><h2 class="modal-title">내가 생각하는<br><b style="color:var(--deep)">${esc(p.ko)}</b>이란?</h2></div>
+            </div>
+            <div class="modal-body">
+              <textarea id="answer-text" maxlength="300" placeholder="예: ${esc(p.desc)}&#10;&#10;내가 생각하는 ${esc(p.ko)}의 모습과 이유를 자유롭게 적어 보세요.">${esc(answers[id]||'')}</textarea>
+              <div class="meta"><span class="hint">${icon('sparkles',13)} 친구에게 설명하듯 적으면 좋아요.</span><span class="count" id="answer-count">0/300</span></div>
+            </div>
+            <div class="actions">
+              <button class="btn ghost" id="cancel">취소</button>
+              <button class="btn primary" id="save" disabled>저장하기</button>
+            </div>
+          </section>
+        </div>`;
+      const close = () => root.innerHTML = '';
+      const ta = document.getElementById('answer-text');
+      const cnt = document.getElementById('answer-count');
+      const saveBtn = document.getElementById('save');
+      const sync = () => { cnt.textContent = `${ta.value.length}/300`; saveBtn.disabled = !ta.value.trim(); };
+      ta.addEventListener('input', sync);
+      document.getElementById('cancel').addEventListener('click', close);
+      document.querySelector('.modal-x').addEventListener('click', close);
+      document.querySelector('.modal-back').addEventListener('mousedown', e => { if (e.target.classList.contains('modal-back')) close(); });
+      saveBtn.addEventListener('click', async () => {
+        const text = ta.value.trim();
+        if (!text) return;
+        const updated = { ...myAnswers(), [id]: text };
+        await upsertMe({ personal_answers: updated });
+        close();
+        renderPersonal();
+        hydrateIcons();
+      });
+      sync();
+      setTimeout(() => ta.focus(), 30);
+    }
+
+    function renderGroup() {
+      const data = myData();
+      const selectedId = data.group_profile_id || profiles[0].id;
+      const p = profiles.find(item => item.id === selectedId) || profiles[0];
+      const groupInfo = getGroupInfo(mySeat);
+      const postitColors = ['lime','blue','pink','orange'];
+      const postitTurns = [-2.2, 1.6, -1.2, 2.4];
+
+      const members = groupInfo.seats.map((seat, i) => ({
+        seat, isMe: seat === mySeat,
+        answer: (allResponses[seat]?.personal_answers||{})[selectedId] || '',
+        label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
+      }));
+
+      const submitted = data.group_submitted;
+
+      document.getElementById('main').innerHTML = `
+        <section class="screen" style="${styleVars(p.color)}">
+          <header class="head">
+            <div>
+              <span class="step">2단계 · 모둠 활동</span>
+              <h1>생각을 모아 모둠의 정의 만들기</h1>
+              <p>내 모둠: <b>${esc(groupInfo.name)}</b> · ${groupInfo.seats.map(s=>`${s}번`).join(', ')}</p>
+            </div>
+            <div class="lens">
+              <label for="profile-select">함께 보는 학습자상</label>
+              <select id="profile-select">${profiles.map(item=>`<option value="${item.id}"${item.id===selectedId?' selected':''}>${esc(item.ko)}</option>`).join('')}</select>
+            </div>
+          </header>
+          <div class="split">
+            <section class="panel">
+              <div class="panel-bar">
+                <span class="panel-title">${icon('users',18)} 모둠원의 개인 생각</span>
+                <span class="chip">${icon(p.icon,14)} ${esc(p.ko)}</span>
+              </div>
+              <div class="postits">
+                ${members.slice(0,4).map(m=>`
+                  <article class="postit" style="${styleVars(postitColors[m.idx%4])};transform:rotate(${postitTurns[m.idx]}deg)">
+                    <span class="pin"></span>
+                    <p>${esc(m.answer||'아직 작성 전이에요.')}</p>
+                    <span class="name"><span class="avatar">${esc(m.label[0])}</span>${esc(m.label)}</span>
+                  </article>`).join('')}
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+              ${submitted ? `
+                <div class="submitted">
+                  <span class="badge">${icon('check',16)} 제출 완료</span>
+                  <span style="color:var(--accent)">${icon('quote',28)}</span>
+                  <p class="def"><b style="color:var(--deep)">${esc(p.ko)}</b>은/는 ${esc(data.group_def||'')}</p>
+                  <div class="submitted-foot">
+                    <span class="hint">${icon('users',14)} 제출이 완료됐어요</span>
+                    <button class="btn small" id="group-edit">${icon('pencil',14)} 다시 고치기</button>
+                  </div>
+                </div>` : `
+                <p class="lead">모둠원의 생각을 살펴보고, <b style="color:var(--deep)">${esc(p.ko)}</b>을/를 우리 모둠만의 한 문장으로 정리해 보세요.</p>
+                <div class="compose-frame">
+                  <span class="prefix">${esc(p.ko)}은/는...</span>
+                  <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(data.group_def||'')}</textarea>
+                </div>
+                <div class="meta"><span class="hint">${icon('sparkles',13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
+                <button class="btn primary block" id="group-submit" disabled>${icon('send',17)} 우리 모둠 정의 제출하기</button>`}
+            </section>
+          </div>
+        </section>`;
+
+      document.getElementById('profile-select').addEventListener('change', async e => {
+        await upsertMe({ group_profile_id: e.target.value, group_def: '', group_submitted: false });
+        renderGroup(); hydrateIcons();
+      });
+
+      const defText = document.getElementById('group-def');
+      if (defText) {
+        const submitBtn = document.getElementById('group-submit');
+        const cntEl = document.getElementById('group-count');
+        const sync = () => { submitBtn.disabled = !defText.value.trim(); cntEl.textContent = `${defText.value.length}/200`; };
+        defText.addEventListener('input', sync);
+        submitBtn.addEventListener('click', async () => {
+          await upsertMe({ group_profile_id: selectedId, group_def: defText.value.trim(), group_submitted: true });
+          renderGroup(); hydrateIcons();
+        });
+        sync();
+      }
+      document.getElementById('group-edit')?.addEventListener('click', async () => {
+        await upsertMe({ group_submitted: false });
+        renderGroup(); hydrateIcons();
+      });
+    }
+
+    function renderSelf() {
+      const scores = myScores();
+      const rated = profiles.filter(p => scores[p.id]).length;
+      const avgScores = calcAvg();
+      document.getElementById('main').innerHTML = `
+        <section class="screen">
+          <header class="head">
+            <div>
+              <span class="step">3단계 · 자기 평가</span>
+              <h1>나의 학습자상 능력치 평가하기</h1>
+              <p>학습자상의 의미를 읽고, 내가 생각하는 나의 능력치를 1~10으로 평가해요.</p>
+            </div>
+            <div class="progress">
+              <div class="ring" style="--pct:${Math.round(rated/10*100)}"><span>${rated}<i>/10</i></span></div>
+              <span class="progress-label">평가 완료</span>
+            </div>
+          </header>
+          <div style="display:grid;gap:28px">
+            <div style="display:flex;justify-content:center;padding:12px 0">${radarChart(scores, avgScores)}</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+              ${profiles.map(p => selfCard(p, scores[p.id]||0)).join('')}
+            </div>
+          </div>
+        </section>`;
+      document.querySelectorAll('[data-score-btn]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const pid = btn.dataset.profileId;
+          const score = +btn.dataset.score;
+          const updated = { ...myScores(), [pid]: score };
+          await upsertMe({ self_scores: updated, self_submitted: true });
+          renderSelf(); hydrateIcons();
+        });
+      });
+    }
+
+    function selfCard(p, score) {
+      const meaning = classMeanings[p.id] || `우리 학급에게 ${p.ko}은/는 서로의 생각을 존중하며 함께 실천할 때 완성되는 모습입니다.`;
+      return `<section class="panel" style="${styleVars(p.color)}">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <span class="card-icon" style="flex:0 0 auto;width:40px;height:40px;border-radius:10px">${icon(p.icon,22)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+              <span style="color:var(--ink);font-size:15px;font-weight:850">${esc(p.ko)}</span>
+              ${score?`<span class="chip" style="background:var(--accent);color:#fff">${score}점</span>`:'<span class="chip">미평가</span>'}
+            </div>
+            <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.55;font-style:italic">"${esc(meaning)}"</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${Array.from({length:10},(_,i)=>{
+            const v=i+1,sel=score===v;
+            return `<button data-score-btn data-profile-id="${p.id}" data-score="${v}" style="width:34px;height:34px;border-radius:8px;font-size:13px;font-weight:900;border:0;cursor:pointer;background:${sel?'var(--accent)':'rgba(112,115,124,.09)'};color:${sel?'#fff':'rgba(55,56,60,.55)'};">${v}</button>`;
+          }).join('')}
+        </div>
+      </section>`;
+    }
+
+    function calcAvg() {
+      const entries = Object.values(allResponses).filter(r => r?.self_scores && Object.keys(r.self_scores).length);
+      if (!entries.length) return {};
+      const sums={}, counts={};
+      entries.forEach(r => profiles.forEach(p => { const v=r.self_scores[p.id]; if(v){sums[p.id]=(sums[p.id]||0)+v; counts[p.id]=(counts[p.id]||0)+1;} }));
+      const avgs={};
+      profiles.forEach(p => { avgs[p.id]=counts[p.id] ? +(sums[p.id]/counts[p.id]).toFixed(1) : 0; });
+      return avgs;
+    }
+
+    function radarChart(myS, avgS) {
+      const W=300,H=300,cx=150,cy=150,R=100,n=profiles.length,startA=-Math.PI/2;
+      const pt=(i,s)=>{const a=startA+(i/n)*2*Math.PI,r=(s/10)*R;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+      const poly=scores=>profiles.map((p,i)=>{const[x,y]=pt(i,scores[p.id]||0);return`${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ')+' Z';
+      const grids=[2,4,6,8,10].map(lv=>{const d=profiles.map((_,i)=>{const[x,y]=pt(i,lv);return`${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ')+' Z';return`<path d="${d}" fill="none" stroke="rgba(112,115,124,.${lv===10?'18':'1'})" stroke-width="${lv===10?1.5:1}"/>`;});
+      const axes=profiles.map((_,i)=>{const[x,y]=pt(i,10);return`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(112,115,124,.14)" stroke-width="1"/>`;});
+      const labels=profiles.map((p,i)=>{const a=startA+(i/n)*2*Math.PI,lx=cx+(R+22)*Math.cos(a),ly=cy+(R+22)*Math.sin(a),anchor=lx<cx-4?'end':lx>cx+4?'start':'middle';const short=p.ko.replace(/을 지키는 사람|을 가진 사람|잡힌 사람|이 많은 사람|하는 사람/g,'').trim();return`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="10" font-weight="800" fill="rgba(37,38,41,.78)">${esc(short)}</text>`;});
+      const hasMyData=profiles.some(p=>myS[p.id]);
+      const hasAvgData=profiles.some(p=>avgS[p.id]);
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block">
+        ${grids.join('')}${axes.join('')}
+        ${hasAvgData?`<path d="${poly(avgS)}" fill="rgba(112,115,124,.09)" stroke="rgba(112,115,124,.45)" stroke-width="1.5" stroke-dasharray="5,3"/>`:''}
+        ${hasMyData?`<path d="${poly(myS)}" fill="rgba(0,102,255,.14)" stroke="#0066ff" stroke-width="2.5" stroke-linejoin="round"/>`:''}
+        ${hasMyData?profiles.map((p,i)=>{const s=myS[p.id]||0;if(!s)return'';const[x,y]=pt(i,s);return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5" fill="#0066ff" stroke="#fff" stroke-width="1.5"/>`;}).join(''):''}
+        ${labels.join('')}
+      </svg>`;
+    }
+
+    // Init
+    async function init() {
+      if (!classroomId) {
+        document.getElementById('main').innerHTML = `<div style="padding:80px 20px;text-align:center;color:var(--muted)">학급 링크가 올바르지 않습니다. <a href="index.html">처음으로 돌아가기</a></div>`;
+        return;
+      }
+      const { data: cls, error } = await sb.from('classrooms').select('*').eq('id', classroomId).single();
+      if (error || !cls) {
+        document.getElementById('main').innerHTML = `<div style="padding:80px 20px;text-align:center;color:var(--muted)">학급을 찾을 수 없습니다.</div>`;
+        return;
+      }
+      classroom = cls;
+      document.getElementById('brand-title').textContent = cls.name;
+      document.title = cls.name + ' · IB 학습자상';
+
+      const savedSeat = parseInt(sessionStorage.getItem('ib_seat_' + classroomId));
+      if (savedSeat && savedSeat >= 1 && savedSeat <= cls.student_count) {
+        mySeat = savedSeat;
+        const chip = document.getElementById('seat-chip');
+        chip.textContent = `${savedSeat}번 학생`;
+        chip.style.display = '';
+      }
+
+      const [{ data: resps }, { data: meanings }] = await Promise.all([
+        sb.from('student_responses').select('*').eq('classroom_id', classroomId),
+        sb.from('class_meanings').select('*').eq('classroom_id', classroomId)
+      ]);
+      if (resps) resps.forEach(r => allResponses[r.seat_number] = r);
+      if (meanings) meanings.forEach(m => classMeanings[m.profile_id] = m.meaning);
+
+      sb.channel(`student:${classroomId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'student_responses', filter: `classroom_id=eq.${classroomId}` }, payload => {
+          if (payload.eventType === 'DELETE') delete allResponses[payload.old.seat_number];
+          else allResponses[payload.new.seat_number] = payload.new;
+          if (mySeat && currentTab === 'group') { renderGroup(); hydrateIcons(); }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
+          if (payload.new) classMeanings[payload.new.profile_id] = payload.new.meaning;
+          if (mySeat && currentTab === 'self') { renderSelf(); hydrateIcons(); }
+        })
+        .subscribe();
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!mySeat) return;
+          currentTab = btn.dataset.tab;
+          render();
+        });
+      });
+
+      render();
+    }
+
+    init();
+  </script>
+</body>
+</html>
