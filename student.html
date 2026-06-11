@@ -280,6 +280,13 @@
     function myAnswers() { return myData().personal_answers || {}; }
     function myScores() { return myData().self_scores || {}; }
 
+    function getMyStorage() {
+      try { return JSON.parse(localStorage.getItem('ib_student_' + classroomId)); } catch { return null; }
+    }
+    function setMyStorage(seat, name) {
+      localStorage.setItem('ib_student_' + classroomId, JSON.stringify({ seat, name }));
+    }
+
     function getGroupInfo(seat) {
       const assignments = classroom.group_assignments || {};
       const gs = Math.ceil(classroom.student_count / classroom.group_count);
@@ -327,10 +334,11 @@
                 ${Array.from({length:total},(_,i)=>{
                   const no = i+1;
                   const resp = allResponses[no];
-                  const busy = resp && Object.keys(resp.personal_answers||{}).length > 0;
+                  const busy = resp && (resp.student_name || Object.keys(resp.personal_answers||{}).length > 0);
+                  const label = resp?.student_name || (busy ? '활동 중' : '비어 있음');
                   return `<button class="seat${busy?' active-seat':''}" data-seat="${no}">
                     <span>${no}번</span>
-                    <small>${busy?'활동 중':'비어 있음'}</small>
+                    <small>${esc(label)}</small>
                   </button>`;
                 }).join('')}
               </div>
@@ -345,28 +353,39 @@
       document.querySelectorAll('[data-seat]').forEach(btn => btn.addEventListener('click', () => showSeatForm(+btn.dataset.seat)));
     }
 
+    function enterSeat(seat, name) {
+      mySeat = seat;
+      setMyStorage(seat, name);
+      upsertMe({ student_name: name });
+      const chip = document.getElementById('seat-chip');
+      chip.textContent = `${seat}번 · ${name || '학생'}`;
+      chip.style.display = '';
+      currentTab = 'personal';
+      render();
+    }
+
     function showSeatForm(seat) {
       document.querySelectorAll('.seat').forEach(b => b.classList.toggle('selected', +b.dataset.seat === seat));
+      const saved = getMyStorage();
+      if (saved?.seat === seat) {
+        enterSeat(seat, saved.name);
+        return;
+      }
+      const existingName = allResponses[seat]?.student_name || '';
       document.getElementById('seat-form-area').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:12px">
           <div class="field">
             <label>${seat}번으로 입장</label>
-            <input type="text" id="sname" placeholder="이름 입력 (선택)" maxlength="20">
+            <input type="text" id="sname" placeholder="이름 입력 (선택)" maxlength="20"${existingName ? ` value="${esc(existingName)}"` : ''}>
           </div>
+          ${existingName ? `<p class="hint" style="color:#c0152a">${icon('users',13)} 이미 "${esc(existingName)}"이(가) 사용 중인 번호예요.</p>` : ''}
           <button class="btn primary" id="start-btn" style="width:100%;justify-content:center">
             ${icon('send',17)} 시작하기
           </button>
-          <p class="hint">이전에 활동한 번호라면 이어서 할 수 있습니다.</p>
         </div>`;
       const nameIn = document.getElementById('sname');
       document.getElementById('start-btn').addEventListener('click', () => {
-        mySeat = seat;
-        sessionStorage.setItem('ib_seat_' + classroomId, seat);
-        const chip = document.getElementById('seat-chip');
-        chip.textContent = `${seat}번 · ${nameIn.value.trim() || '학생'}`;
-        chip.style.display = '';
-        currentTab = 'personal';
-        render();
+        enterSeat(seat, nameIn.value.trim());
       });
       nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('start-btn').click(); });
       nameIn.focus();
@@ -724,11 +743,12 @@
       document.getElementById('brand-title').textContent = cls.name;
       document.title = cls.name + ' · IB 학습자상';
 
-      const savedSeat = parseInt(sessionStorage.getItem('ib_seat_' + classroomId));
+      const savedStudent = getMyStorage();
+      const savedSeat = savedStudent?.seat;
       if (savedSeat && savedSeat >= 1 && savedSeat <= cls.student_count) {
         mySeat = savedSeat;
         const chip = document.getElementById('seat-chip');
-        chip.textContent = `${savedSeat}번 학생`;
+        chip.textContent = `${savedSeat}번 · ${savedStudent.name || '학생'}`;
         chip.style.display = '';
         // Clear stale editing lock from previous session
         sb.from('student_responses').upsert(
