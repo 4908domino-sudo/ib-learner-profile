@@ -76,3 +76,7 @@ end $$;
 -- 7. 실시간 활성화
 alter publication supabase_realtime add table student_responses;
 alter publication supabase_realtime add table class_meanings;
+alter publication supabase_realtime add table classrooms;
+
+-- 8. 모둠 편성 컬럼 (기존 DB에 이미 테이블이 있다면 아래 줄만 실행)
+alter table classrooms add column if not exists group_assignments jsonb default '{}';

@@ -101,6 +101,15 @@
     .spinner{width:14px;height:14px;border-radius:50%;border:2px solid #dbdcdf;border-top-color:#0066ff;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     svg{flex:0 0 auto}
+    .assign-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+    .assign-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+    .assign-cell{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:10px;background:var(--bg)}
+    .assign-seat-no{font-size:11px;font-weight:750;color:var(--muted)}
+    .assign-badge{padding:5px 8px;border-radius:999px;border:0;font-size:12px;font-weight:800;cursor:pointer;transition:transform .1s;width:100%;text-align:center}
+    .assign-badge:hover{filter:brightness(.94)}
+    .assign-badge:active{transform:scale(.93)}
+    .save-notice{font-size:12px;color:var(--muted);font-weight:600}
+    @media(min-width:1280px){.assign-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr))}}
     @media(max-width:700px){.tabs{width:100%;justify-content:space-between}.tab{flex:1;justify-content:center;padding:8px 8px}.screen{padding:20px 16px 48px}}
   </style>
 </head>
@@ -169,6 +178,7 @@
       activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
       reflect:'<circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2m-15.7 5.7-1.4 1.4m14.2-14.2-1.4 1.4m0 11.4 1.4 1.4M4.9 4.9l1.4 1.4"/>',
       check:'<polyline points="20 6 9 17 4 12"/>',pencil:'<path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>',
+      shuffle:'<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>',
       users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
       grid:'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
       save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'
@@ -180,20 +190,97 @@
     function sv(color) { const[s,,a,d]=ramps[color]; return `--soft:${s};--accent:${a};--deep:${d}`; }
     function esc(t) { return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
 
+    const groupBg  = ['#eaf2fe','#f0ecfe','#d9ffe6','#fef4e6','#feecfb','#defaff','#e6ffd4','#feeee5','#f9edff','#e5f6fe'];
+    const groupTxt = ['#0066ff','#6541f2','#00bf40','#ff9200','#e846cd','#00bdde','#58cf04','#ff5e00','#cb59ff','#00aeff'];
+
     let classroom = null;
     let currentTab = 'overview';
     let selectedProfileId = profiles[0].id;
+    let groupAssignments = {};
+    let assignDirty = false;
     const allResponses = {};
     const classMeanings = {};
 
+    function effectiveGroupNo(seat) {
+      if (groupAssignments[seat] != null) return groupAssignments[seat];
+      const gs = Math.ceil(classroom.student_count / classroom.group_count);
+      return Math.ceil(seat / gs);
+    }
+
     function getGroups() {
       if (!classroom) return [];
-      const gs = Math.ceil(classroom.student_count / classroom.group_count);
+      const allSeats = Array.from({length: classroom.student_count}, (_, i) => i + 1);
       return Array.from({length: classroom.group_count}, (_, i) => {
         const no = i + 1;
-        const start = i * gs + 1;
-        const end = Math.min(start + gs - 1, classroom.student_count);
-        return { no, name: `${no}모둠 · ${groupNames[i]||no+'모둠'}`, seats: Array.from({length:end-start+1},(_,j)=>start+j) };
+        return { no, name: `${no}모둠 · ${groupNames[i]||no+'모둠'}`, seats: allSeats.filter(s => effectiveGroupNo(s) === no) };
+      });
+    }
+
+    function randomizeGroups() {
+      const n = classroom.student_count, g = classroom.group_count;
+      const seats = Array.from({length: n}, (_, i) => i + 1);
+      for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [seats[i], seats[j]] = [seats[j], seats[i]]; }
+      const gs = Math.ceil(n / g);
+      groupAssignments = {};
+      seats.forEach((seat, idx) => { groupAssignments[seat] = Math.min(Math.ceil((idx + 1) / gs), g); });
+      assignDirty = true;
+      renderGroupMgmt();
+    }
+
+    async function saveGroupAssignments() {
+      const btn = document.getElementById('btn-save-groups');
+      if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>`; }
+      const { error } = await sb.from('classrooms').update({ group_assignments: groupAssignments }).eq('id', classroomId);
+      if (!error) {
+        classroom.group_assignments = { ...groupAssignments };
+        assignDirty = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = `${icon('check',14)} 저장됨`; setTimeout(() => { btn.innerHTML = `${icon('save',14)} 저장하기`; }, 1500); }
+      } else {
+        if (btn) { btn.disabled = false; btn.innerHTML = `${icon('save',14)} 저장하기`; }
+        alert('저장 오류: ' + error.message);
+      }
+    }
+
+    function renderGroupMgmt() {
+      const el = document.getElementById('group-mgmt');
+      if (!el) return;
+      el.innerHTML = `
+        <div class="assign-toolbar">
+          <span class="panel-title">${icon('shuffle')} 모둠 편성</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${assignDirty ? `<span class="save-notice">저장 전 변경사항이 있습니다</span>` : ''}
+            <button class="btn" id="btn-random">${icon('shuffle',14)} 랜덤 섞기</button>
+            <button class="btn primary" id="btn-save-groups">${icon('save',14)} 저장하기</button>
+          </div>
+        </div>
+        <div class="assign-grid">
+          ${Array.from({length: classroom.student_count}, (_, i) => {
+            const seat = i + 1;
+            const gno = effectiveGroupNo(seat);
+            return `<div class="assign-cell">
+              <span class="assign-seat-no">${seat}번</span>
+              <button class="assign-badge" data-seat="${seat}" style="background:${groupBg[gno-1]};color:${groupTxt[gno-1]}">${gno}모둠</button>
+            </div>`;
+          }).join('')}
+        </div>`;
+      document.getElementById('btn-random').addEventListener('click', randomizeGroups);
+      document.getElementById('btn-save-groups').addEventListener('click', saveGroupAssignments);
+      document.querySelectorAll('.assign-badge').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const seat = +btn.dataset.seat;
+          const cur = effectiveGroupNo(seat);
+          const next = (cur % classroom.group_count) + 1;
+          groupAssignments[seat] = next;
+          assignDirty = true;
+          btn.textContent = `${next}모둠`;
+          btn.style.background = groupBg[next-1];
+          btn.style.color = groupTxt[next-1];
+          const notice = document.querySelector('.save-notice');
+          if (!notice) {
+            const toolbar = document.querySelector('.assign-toolbar div');
+            if (toolbar) { const sp = document.createElement('span'); sp.className='save-notice'; sp.textContent='저장 전 변경사항이 있습니다'; toolbar.prepend(sp); }
+          }
+        });
       });
     }
 
@@ -293,6 +380,7 @@
               <p class="desc">각 모둠이 제출한 학습자상 정의를 확인합니다.</p>
             </div>
           </div>
+          <div class="panel" style="margin-bottom:20px" id="group-mgmt"></div>
           <div class="group-grid">
             ${groups.map(g => {
               const submitters = g.seats.filter(s => allResponses[s]?.group_submitted);
@@ -318,6 +406,7 @@
             }).join('')}
           </div>
         </div>`;
+      renderGroupMgmt();
     }
 
     function renderClass() {
@@ -392,6 +481,7 @@
         return;
       }
       classroom = cls;
+      groupAssignments = { ...(cls.group_assignments || {}) };
       document.getElementById('brand-mark').innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons.sparkles}</svg>`;
       document.getElementById('brand-title').textContent = cls.name;
       document.getElementById('brand-sub').textContent = `학생 ${cls.student_count}명 · ${cls.group_count}개 모둠`;
@@ -414,6 +504,12 @@
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
           if (payload.new) classMeanings[payload.new.profile_id] = payload.new.meaning;
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'classrooms', filter: `id=eq.${classroomId}` }, payload => {
+          if (payload.new?.group_assignments) {
+            classroom.group_assignments = payload.new.group_assignments;
+            if (!assignDirty) { groupAssignments = { ...payload.new.group_assignments }; if (currentTab === 'group') renderGroup(); }
+          }
         })
         .subscribe();
 

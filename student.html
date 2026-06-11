@@ -280,11 +280,12 @@
     function myScores() { return myData().self_scores || {}; }
 
     function getGroupInfo(seat) {
+      const assignments = classroom.group_assignments || {};
       const gs = Math.ceil(classroom.student_count / classroom.group_count);
-      const gno = Math.ceil(seat / gs);
-      const start = (gno - 1) * gs + 1;
-      const end = Math.min(start + gs - 1, classroom.student_count);
-      return { no: gno, name: `${gno}모둠 · ${groupNames[gno-1]||gno+'모둠'}`, seats: Array.from({length:end-start+1},(_,i)=>start+i) };
+      const gno = assignments[seat] != null ? assignments[seat] : Math.ceil(seat / gs);
+      const allSeats = Array.from({length: classroom.student_count}, (_, i) => i + 1);
+      const seats = allSeats.filter(s => (assignments[s] != null ? assignments[s] : Math.ceil(s / gs)) === gno);
+      return { no: gno, name: `${gno}모둠 · ${groupNames[gno-1]||gno+'모둠'}`, seats };
     }
 
     // Supabase save helpers
@@ -661,6 +662,12 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
           if (payload.new) classMeanings[payload.new.profile_id] = payload.new.meaning;
           if (mySeat && currentTab === 'self') { renderSelf(); hydrateIcons(); }
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'classrooms', filter: `id=eq.${classroomId}` }, payload => {
+          if (payload.new?.group_assignments != null) {
+            classroom.group_assignments = payload.new.group_assignments;
+            if (mySeat && currentTab === 'group') { renderGroup(); hydrateIcons(); }
+          }
         })
         .subscribe();
 
