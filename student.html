@@ -457,15 +457,11 @@
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
       board.innerHTML = groupInfo.seats.map((seat, i) => {
-        const pa = allResponses[seat]?.personal_answers || {};
-        const directAnswer = pa[browsId] || '';
-        const fallbackEntry = !directAnswer && Object.entries(pa).find(([,v]) => v?.trim());
-        const answer = directAnswer || (fallbackEntry ? fallbackEntry[1] : '');
-        const fallbackProfile = fallbackEntry ? profiles.find(fp => fp.id === fallbackEntry[0]) : null;
+        const answer = (allResponses[seat]?.personal_answers||{})[browsId] || '';
         const label = `${seat}번${seat===mySeat?' (나)':''}`;
         return `<article class="postit" style="${styleVars(postitColors[i%6])};transform:rotate(${postitTurns[i%6]}deg)">
           <span class="pin"></span>
-          <p>${esc(answer||'아직 작성 전이에요.')}${fallbackProfile?`<br><small style="opacity:.6;font-size:10px">(${esc(fallbackProfile.ko)} 기준)</small>`:''}</p>
+          <p>${esc(answer||'아직 작성 전이에요.')}</p>
           <span class="name"><span class="avatar">${esc(label[0])}</span>${esc(label)}</span>
         </article>`;
       }).join('');
@@ -480,26 +476,17 @@
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
 
-      const members = groupInfo.seats.map((seat, i) => {
-        const pa = allResponses[seat]?.personal_answers || {};
-        // Show answer for the browsed profile; if empty, fall back to any written answer
-        const directAnswer = pa[browsId] || '';
-        const fallbackEntry = !directAnswer && Object.entries(pa).find(([,v]) => v?.trim());
-        const answer = directAnswer || (fallbackEntry ? fallbackEntry[1] : '');
-        const fallbackProfile = fallbackEntry ? profiles.find(p => p.id === fallbackEntry[0]) : null;
-        return {
-          seat, isMe: seat === mySeat,
-          answer, fallbackProfile,
-          label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
-        };
-      });
+      const members = groupInfo.seats.map((seat, i) => ({
+        seat, isMe: seat === mySeat,
+        answer: (allResponses[seat]?.personal_answers||{})[browsId] || '',
+        label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
+      }));
 
-      const myEditing = data.group_editing;
-      const mySubmitted = data.group_submitted;
-      const otherEditingSeat = groupInfo.seats.find(s => s !== mySeat && allResponses[s]?.group_editing);
-      // For editing form, use the saved group_profile_id as default
-      const editProfileId = data.group_profile_id || profiles[0].id;
-      const editP = profiles.find(item => item.id === editProfileId) || profiles[0];
+      const groupDefs = data.group_defs || {};
+      const myEditing = data.group_editing && data.group_profile_id === browsId;
+      const mySubmitted = !!(groupDefs[browsId]?.trim());
+      const otherEditingSeat = groupInfo.seats.find(s => s !== mySeat && allResponses[s]?.group_editing && allResponses[s]?.group_profile_id === browsId);
+      const editP = profiles.find(item => item.id === browsId) || profiles[0];
 
       let rightPanel;
       if (myEditing) {
@@ -508,12 +495,12 @@
           <div style="margin-bottom:12px">
             <label style="display:block;font-size:12px;font-weight:750;color:var(--muted);margin-bottom:5px">학습자상 선택</label>
             <select id="group-profile-sel">
-              ${profiles.map(item=>`<option value="${item.id}"${item.id===editProfileId?' selected':''}>${esc(item.ko)}</option>`).join('')}
+              ${profiles.map(item=>`<option value="${item.id}"${item.id===browsId?' selected':''}>${esc(item.ko)}</option>`).join('')}
             </select>
           </div>
           <div class="compose-frame">
             <span class="prefix" id="compose-prefix">${esc(editP.ko)}은/는...</span>
-            <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(data.group_def||'')}</textarea>
+            <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(groupDefs[browsId]||'')}</textarea>
           </div>
           <div class="meta"><span class="hint">${icon('sparkles',13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
           <div style="display:flex;gap:8px;margin-top:14px">
@@ -526,7 +513,7 @@
           <div class="submitted">
             <span class="badge">${icon('check',16)} 제출 완료</span>
             <span style="color:var(--accent)">${icon('quote',28)}</span>
-            <p class="def"><b style="color:var(--deep)">${esc(editP.ko)}</b>은/는 ${esc(data.group_def||'')}</p>
+            <p class="def"><b style="color:var(--deep)">${esc(editP.ko)}</b>은/는 ${esc(groupDefs[browsId]||'')}</p>
             <div class="submitted-foot">
               <span class="hint">${icon('users',14)} 제출이 완료됐어요</span>
               ${otherEditingSeat
@@ -575,7 +562,7 @@
                 ${members.map(m=>`
                   <article class="postit" style="${styleVars(postitColors[m.idx%6])};transform:rotate(${postitTurns[m.idx%6]}deg)">
                     <span class="pin"></span>
-                    <p>${esc(m.answer||'아직 작성 전이에요.')}${m.fallbackProfile?`<br><small style="opacity:.6;font-size:10px">(${esc(m.fallbackProfile.ko)} 기준)</small>`:''}</p>
+                    <p>${esc(m.answer||'아직 작성 전이에요.')}</p>
                     <span class="name"><span class="avatar">${esc(m.label[0])}</span>${esc(m.label)}</span>
                   </article>`).join('')}
               </div>
@@ -592,7 +579,7 @@
 
       // Open editing form
       document.getElementById('group-start-edit')?.addEventListener('click', async () => {
-        await upsertMe({ group_editing: true });
+        await upsertMe({ group_editing: true, group_profile_id: browsId });
         renderGroup(); hydrateIcons();
       });
 
@@ -604,7 +591,7 @@
 
       // Edit again from submitted state
       document.getElementById('group-edit')?.addEventListener('click', async () => {
-        await upsertMe({ group_editing: true, group_submitted: false });
+        await upsertMe({ group_editing: true, group_profile_id: browsId });
         renderGroup(); hydrateIcons();
       });
 
@@ -627,8 +614,9 @@
           if (!text) return;
           submitBtn.disabled = true;
           submitBtn.innerHTML = `<span class="spinner"></span> 제출 중...`;
-          const chosenProfileId = document.getElementById('group-profile-sel')?.value || editProfileId;
-          await upsertMe({ group_profile_id: chosenProfileId, group_def: text, group_submitted: true, group_editing: false });
+          const chosenProfileId = document.getElementById('group-profile-sel')?.value || browsId;
+          const updatedDefs = { ...(myData().group_defs || {}), [chosenProfileId]: text };
+          await upsertMe({ group_defs: updatedDefs, group_profile_id: chosenProfileId, group_submitted: true, group_editing: false });
           renderGroup(); hydrateIcons();
         });
         sync();

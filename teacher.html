@@ -410,11 +410,14 @@
               const submitters = g.seats.filter(s => allResponses[s]?.group_submitted);
               // group submissions by profile
               const byProfile = new Map();
-              submitters.forEach(seat => {
+              g.seats.forEach(seat => {
                 const r = allResponses[seat];
-                const pid = r.group_profile_id || '';
-                if (!byProfile.has(pid)) byProfile.set(pid, []);
-                byProfile.get(pid).push({ seat, def: r.group_def || '' });
+                const defs = r?.group_defs || {};
+                Object.entries(defs).forEach(([pid, def]) => {
+                  if (!def?.trim()) return;
+                  if (!byProfile.has(pid)) byProfile.set(pid, []);
+                  byProfile.get(pid).push({ seat, def });
+                });
               });
               const bg = groupBg[(g.no-1) % groupBg.length];
               const txt = groupTxt[(g.no-1) % groupTxt.length];
@@ -467,8 +470,9 @@
               // gather group opinions for this profile
               const groups = getGroups();
               const groupRefs = groups.map(g => {
-                const entries = g.seats.filter(s => allResponses[s]?.group_submitted && allResponses[s]?.group_profile_id === p.id)
-                  .map(s => ({ seat: s, def: allResponses[s].group_def || '' }));
+                const entries = g.seats
+                  .filter(s => allResponses[s]?.group_defs?.[p.id]?.trim())
+                  .map(s => ({ seat: s, def: allResponses[s].group_defs[p.id] }));
                 return entries.length ? { group: g, entries } : null;
               }).filter(Boolean);
               const refsHtml = groupRefs.length ? `
