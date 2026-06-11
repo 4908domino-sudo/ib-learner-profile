@@ -448,6 +448,26 @@
       setTimeout(() => ta.focus(), 30);
     }
 
+    function refreshPostitBoard() {
+      const board = document.getElementById('postit-board');
+      if (!board) return;
+      const data = myData();
+      const selectedId = data.group_profile_id || profiles[0].id;
+      const groupInfo = getGroupInfo(mySeat);
+      const postitColors = ['lime','blue','pink','orange','cyan','violet'];
+      const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
+      board.innerHTML = groupInfo.seats.map((seat, i) => {
+        const answer = (allResponses[seat]?.personal_answers||{})[selectedId] || '';
+        const label = `${seat}번${seat===mySeat?' (나)':''}`;
+        return `<article class="postit" style="${styleVars(postitColors[i%6])};transform:rotate(${postitTurns[i%6]}deg)">
+          <span class="pin"></span>
+          <p>${esc(answer||'아직 작성 전이에요.')}</p>
+          <span class="name"><span class="avatar">${esc(label[0])}</span>${esc(label)}</span>
+        </article>`;
+      }).join('');
+      hydrateIcons();
+    }
+
     function renderGroup() {
       const data = myData();
       const selectedId = data.group_profile_id || profiles[0].id;
@@ -483,7 +503,7 @@
                 <span class="panel-title">${icon('users',18)} 모둠원의 개인 생각</span>
                 <span class="chip">${icon(p.icon,14)} ${esc(p.ko)}</span>
               </div>
-              <div class="postits">
+              <div class="postits" id="postit-board">
                 ${members.map(m=>`
                   <article class="postit" style="${styleVars(postitColors[m.idx%6])};transform:rotate(${postitTurns[m.idx%6]}deg)">
                     <span class="pin"></span>
@@ -657,7 +677,10 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'student_responses', filter: `classroom_id=eq.${classroomId}` }, payload => {
           if (payload.eventType === 'DELETE') delete allResponses[payload.old.seat_number];
           else allResponses[payload.new.seat_number] = payload.new;
-          if (mySeat && currentTab === 'group') { renderGroup(); hydrateIcons(); }
+          if (mySeat && currentTab === 'group') {
+            const typing = document.activeElement?.id === 'group-def';
+            if (typing) { refreshPostitBoard(); } else { renderGroup(); hydrateIcons(); }
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
           if (payload.new) classMeanings[payload.new.profile_id] = payload.new.meaning;
