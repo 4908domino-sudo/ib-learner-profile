@@ -109,6 +109,28 @@
     .assign-badge:hover{filter:brightness(.94)}
     .assign-badge:active{transform:scale(.93)}
     .save-notice{font-size:12px;color:var(--muted);font-weight:600}
+    .group-profile-sec{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+    .group-profile-sec:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+    .group-def-entry{margin-top:5px;padding:7px 10px;border-radius:8px;background:var(--soft,var(--bg))}
+    .refs-toggle{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-top:10px;border-radius:8px;background:var(--bg);border:1px solid var(--line);cursor:pointer;font-size:12px;font-weight:750;color:var(--muted);width:100%;text-align:left;gap:8px}
+    .refs-toggle:hover{background:rgba(112,115,124,.1);color:var(--text)}
+    .refs-body{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .ref-entry{padding:8px 10px;border-radius:8px;border-left:3px solid var(--accent,#0066ff);background:var(--soft,var(--bg))}
+    .score-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--line);background:#fff}
+    .score-table{width:100%;border-collapse:collapse;font-size:13px}
+    .score-table th{padding:9px 8px;font-size:11px;font-weight:850;color:var(--muted);text-align:center;border-bottom:1.5px solid var(--line);white-space:nowrap;background:#fff;position:sticky;top:0}
+    .score-table th.sticky-col{left:0;z-index:2;background:#fff;border-right:1px solid var(--line)}
+    .score-table td{padding:7px 8px;text-align:center;border-bottom:1px solid var(--line)}
+    .score-table td.sticky-col{position:sticky;left:0;background:#fff;border-right:1px solid var(--line);font-weight:800;text-align:left}
+    .score-table tr:hover td{background:#f7f7f8}
+    .score-table tr:hover td.sticky-col{background:#f7f7f8}
+    .score-table .avg-row td{background:#f0f6ff;font-weight:850}
+    .score-table .avg-row td.sticky-col{background:#e0edff}
+    .sc{display:inline-block;min-width:30px;padding:3px 6px;border-radius:6px;font-weight:800;font-size:12px}
+    .sc-h{background:#d9ffe6;color:#006e25}
+    .sc-m{background:#fef4e6;color:#9c5800}
+    .sc-l{background:#feeee5;color:#943600}
+    .sc-n{color:rgba(55,56,60,.3);font-size:11px}
     @media(min-width:1280px){.assign-grid{grid-template-columns:repeat(auto-fill,minmax(68px,1fr))}}
     @media(max-width:700px){.tabs{width:100%;justify-content:space-between}.tab{flex:1;justify-content:center;padding:8px 8px}.screen{padding:20px 16px 48px}}
   </style>
@@ -128,6 +150,7 @@
         <button class="tab" data-tab="personal">개인 활동</button>
         <button class="tab" data-tab="group">모둠 활동</button>
         <button class="tab" data-tab="class">반 전체</button>
+        <button class="tab" data-tab="selfcheck">자기 평가</button>
       </nav>
       <div class="live-badge"><span class="live-dot"></span>실시간</div>
     </header>
@@ -192,6 +215,7 @@
 
     const groupBg  = ['#eaf2fe','#f0ecfe','#d9ffe6','#fef4e6','#feecfb','#defaff','#e6ffd4','#feeee5','#f9edff','#e5f6fe'];
     const groupTxt = ['#0066ff','#6541f2','#00bf40','#ff9200','#e846cd','#00bdde','#58cf04','#ff5e00','#cb59ff','#00aeff'];
+    const profileShort = {inquirers:'탐구',knowledgeable:'지식',thinkers:'생각',communicators:'소통',principled:'원칙',openminded:'열린',caring:'배려',risktakers:'도전',balanced:'균형',reflective:'성찰'};
 
     let classroom = null;
     let currentTab = 'overview';
@@ -384,23 +408,41 @@
           <div class="group-grid">
             ${groups.map(g => {
               const submitters = g.seats.filter(s => allResponses[s]?.group_submitted);
-              const latest = submitters.length ? allResponses[g.seats.find(s => allResponses[s]?.group_submitted)] : null;
-              const profileId = latest?.group_profile_id;
-              const p = profileId ? profiles.find(item => item.id === profileId) : null;
+              // group submissions by profile
+              const byProfile = new Map();
+              submitters.forEach(seat => {
+                const r = allResponses[seat];
+                const pid = r.group_profile_id || '';
+                if (!byProfile.has(pid)) byProfile.set(pid, []);
+                byProfile.get(pid).push({ seat, def: r.group_def || '' });
+              });
+              const bg = groupBg[(g.no-1) % groupBg.length];
+              const txt = groupTxt[(g.no-1) % groupTxt.length];
               return `<div class="group-card">
-                <div class="group-card-top" style="${p?sv(p.color):''}">
-                  <div class="group-no" style="${p?`background:var(--accent)`:'background:rgba(112,115,124,.3)'}">${g.no}</div>
+                <div class="group-card-top" style="background:${bg}">
+                  <div class="group-no" style="background:${txt}">${g.no}</div>
                   <div>
-                    <div class="group-name" style="${p?'color:var(--deep)':''}">${esc(g.name)}</div>
+                    <div class="group-name" style="color:${txt}">${esc(g.name)}</div>
                     <div class="group-members">${g.seats.map(s=>`${s}번`).join(', ')} · ${submitters.length}명 제출</div>
                   </div>
                 </div>
                 <div class="group-body">
-                  ${latest ? `
-                    <div style="font-size:11px;font-weight:750;color:var(--muted);margin-bottom:8px">${p?esc(p.ko):'학습자상'}</div>
-                    <div class="group-def"><b>${p?esc(p.ko):'학습자상'}</b>은/는 ${esc(latest.group_def)}</div>` :
-                    `<p class="empty-text">아직 제출된 정의가 없습니다.</p>`}
-                  ${submitters.length > 1 ? `<div style="margin-top:12px;font-size:12px;color:var(--muted);font-weight:700">${submitters.length}명의 의견이 있습니다.</div>` : ''}
+                  ${submitters.length === 0
+                    ? `<p class="empty-text">아직 제출된 정의가 없습니다.</p>`
+                    : Array.from(byProfile.entries()).map(([pid, entries]) => {
+                        const p = profiles.find(item => item.id === pid);
+                        return `<div class="group-profile-sec" style="${p?sv(p.color):''}">
+                          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                            ${p ? `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:var(--soft);color:var(--deep);font-size:12px;font-weight:850">${icon(p.icon,12)} ${esc(p.ko)}</span>` : ''}
+                            <span style="font-size:11px;color:var(--muted);font-weight:700">${entries.length}명</span>
+                          </div>
+                          ${entries.map(e => `
+                            <div class="group-def-entry">
+                              <div style="font-size:11px;font-weight:850;color:${p?'var(--deep)':'var(--muted)'};margin-bottom:3px">${e.seat}번</div>
+                              <div class="group-def">${e.def ? `<b>${p?esc(p.ko):'학습자상'}</b>은/는 ${esc(e.def)}` : '<span class="empty-text">내용 없음</span>'}</div>
+                            </div>`).join('')}
+                        </div>`;
+                      }).join('')}
                 </div>
               </div>`;
             }).join('')}
@@ -422,6 +464,25 @@
           <div class="meanings-grid" id="meanings-grid">
             ${profiles.map(p => {
               const current = classMeanings[p.id] || '';
+              // gather group opinions for this profile
+              const groups = getGroups();
+              const groupRefs = groups.map(g => {
+                const entries = g.seats.filter(s => allResponses[s]?.group_submitted && allResponses[s]?.group_profile_id === p.id)
+                  .map(s => ({ seat: s, def: allResponses[s].group_def || '' }));
+                return entries.length ? { group: g, entries } : null;
+              }).filter(Boolean);
+              const refsHtml = groupRefs.length ? `
+                <button class="refs-toggle" style="${sv(p.color)}" data-refs-toggle="${p.id}">
+                  <span>${icon('users',13)} 모둠 의견 참고 (${groupRefs.length}개 모둠)</span>
+                  <span data-refs-arrow="${p.id}">▸</span>
+                </button>
+                <div class="refs-body" id="refs-${p.id}" style="display:none">
+                  ${groupRefs.map(r => `
+                    <div class="ref-entry" style="${sv(p.color)}">
+                      <div class="ref-group-label" style="color:var(--deep)">${esc(r.group.name)}</div>
+                      ${r.entries.map(e => `<div class="ref-def-text">${e.seat}번: <b>${esc(p.ko)}</b>은/는 ${esc(e.def)}</div>`).join('')}
+                    </div>`).join('')}
+                </div>` : '';
               return `<div class="meaning-card" id="mc-${p.id}">
                 <div class="meaning-top" style="${sv(p.color)}">
                   <span class="meaning-icon">${icon(p.icon,18)}</span>
@@ -431,7 +492,8 @@
                   </div>
                 </div>
                 <div class="meaning-body">
-                  <textarea id="m-${p.id}" rows="3" placeholder="우리 학급만의 ${esc(p.ko)} 의미를 작성하세요...">${esc(current)}</textarea>
+                  ${refsHtml}
+                  <textarea id="m-${p.id}" rows="3" style="margin-top:${refsHtml?'10px':'0'}" placeholder="우리 학급만의 ${esc(p.ko)} 의미를 작성하세요...">${esc(current)}</textarea>
                   <div style="display:flex;justify-content:flex-end;margin-top:8px">
                     <button class="btn primary small" data-save="${p.id}">${icon('save',14)} 저장</button>
                   </div>
@@ -441,6 +503,16 @@
           </div>
         </div>`;
 
+      document.querySelectorAll('[data-refs-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = btn.dataset.refsToggle;
+          const body = document.getElementById(`refs-${pid}`);
+          const arrow = document.querySelector(`[data-refs-arrow="${pid}"]`);
+          const open = body.style.display === 'none';
+          body.style.display = open ? '' : 'none';
+          if (arrow) arrow.textContent = open ? '▾' : '▸';
+        });
+      });
       document.querySelectorAll('[data-save]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const profileId = btn.dataset.save;
@@ -462,12 +534,93 @@
       });
     }
 
+    function radarTeacher(scoresObj, color, fillAlpha) {
+      const W=240,H=240,cx=120,cy=120,R=88,n=profiles.length,startA=-Math.PI/2;
+      const pt=(i,s)=>{const a=startA+(i/n)*2*Math.PI,r=(s/10)*R;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+      const poly=s=>profiles.map((p,i)=>{const[x,y]=pt(i,s[p.id]||0);return`${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ')+' Z';
+      const grids=[2,4,6,8,10].map(lv=>{const d=profiles.map((_,i)=>{const[x,y]=pt(i,lv);return`${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ')+' Z';return`<path d="${d}" fill="none" stroke="rgba(112,115,124,.${lv===10?'18':'1'})" stroke-width="${lv===10?1.5:1}"/>`;});
+      const axes=profiles.map((_,i)=>{const[x,y]=pt(i,10);return`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(112,115,124,.14)" stroke-width="1"/>`;});
+      const labels=profiles.map((p,i)=>{const a=startA+(i/n)*2*Math.PI,lx=cx+(R+22)*Math.cos(a),ly=cy+(R+22)*Math.sin(a),anchor=lx<cx-4?'end':lx>cx+4?'start':'middle';return`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" dominant-baseline="middle" font-size="10" font-weight="800" fill="rgba(37,38,41,.78)">${esc(profileShort[p.id]||p.id)}</text>`;});
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;display:block">
+        ${grids.join('')}${axes.join('')}
+        <path d="${poly(scoresObj)}" fill="${color}${Math.round(fillAlpha*255).toString(16).padStart(2,'0')}" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+        ${profiles.map((p,i)=>{const s=scoresObj[p.id]||0;if(!s)return'';const[x,y]=pt(i,s);return`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}" stroke="#fff" stroke-width="1.5"/>`;}).join('')}
+        ${labels.join('')}
+      </svg>`;
+    }
+
+    function scCell(v) {
+      if (!v) return `<span class="sc sc-n">—</span>`;
+      const cls = v>=8?'sc-h':v>=5?'sc-m':'sc-l';
+      return `<span class="sc ${cls}">${v}</span>`;
+    }
+
+    function renderSelfTab() {
+      const submitted = Object.values(allResponses).filter(r => r?.self_scores && Object.keys(r.self_scores).length > 0);
+      const avgScores = {};
+      if (submitted.length) {
+        const sums={}, counts={};
+        submitted.forEach(r => profiles.forEach(p => { const v=r.self_scores[p.id]; if(v){sums[p.id]=(sums[p.id]||0)+v;counts[p.id]=(counts[p.id]||0)+1;} }));
+        profiles.forEach(p => { avgScores[p.id] = counts[p.id] ? +(sums[p.id]/counts[p.id]).toFixed(1) : 0; });
+      }
+
+      document.getElementById('main').innerHTML = `
+        <div class="screen">
+          <div class="section-head">
+            <div>
+              <span class="step-badge">3단계 · 자기 평가</span>
+              <h1>자기 평가 결과</h1>
+              <p class="desc">학생별 자기 평가 점수와 학급 평균을 확인합니다. (${submitted.length}명 완료 / 전체 ${classroom.student_count}명)</p>
+            </div>
+          </div>
+          ${submitted.length === 0
+            ? `<div class="panel"><p class="empty-text" style="padding:24px 0;text-align:center">아직 자기 평가를 완료한 학생이 없습니다.</p></div>`
+            : `<div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;margin-bottom:24px">
+                <div class="panel" style="text-align:center;padding:24px 20px">
+                  <div style="font-size:13px;font-weight:850;color:var(--ink);margin-bottom:16px">학급 평균</div>
+                  ${radarTeacher(avgScores,'#0066ff',0.14)}
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px">
+                    ${profiles.map(p=>avgScores[p.id]?`<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:${avgScores[p.id]>=8?'#d9ffe6':avgScores[p.id]>=5?'#fef4e6':'#feeee5'};color:${avgScores[p.id]>=8?'#006e25':avgScores[p.id]>=5?'#9c5800':'#943600'}">${profileShort[p.id]} ${avgScores[p.id]}</span>`:'').join('')}
+                  </div>
+                </div>
+                <div class="panel" style="padding:0;overflow:hidden">
+                  <div class="score-wrap">
+                    <table class="score-table">
+                      <thead>
+                        <tr>
+                          <th class="sticky-col" style="text-align:left">번호</th>
+                          ${profiles.map(p=>`<th title="${esc(p.ko)}">${profileShort[p.id]}</th>`).join('')}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="avg-row">
+                          <td class="sticky-col">학급 평균</td>
+                          ${profiles.map(p=>`<td>${submitted.length?scCell(avgScores[p.id]):'—'}</td>`).join('')}
+                        </tr>
+                        ${Array.from({length:classroom.student_count},(_,i)=>{
+                          const seat=i+1, r=allResponses[seat];
+                          const scores=r?.self_scores||{};
+                          const done=r?.self_scores&&Object.keys(scores).length>0;
+                          return `<tr>
+                            <td class="sticky-col" style="color:${done?'var(--ink)':'var(--muted)'}">${seat}번${done?'':' <small style="opacity:.5">미완료</small>'}</td>
+                            ${profiles.map(p=>`<td>${done?scCell(scores[p.id]||0):'<span class="sc-n" style="font-size:11px;color:rgba(55,56,60,.25)">—</span>'}</td>`).join('')}
+                          </tr>`;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>`}
+        </div>`;
+    }
+
     function render() {
       renderTabs();
       if (currentTab === 'overview') renderOverview();
       else if (currentTab === 'personal') renderPersonal();
       else if (currentTab === 'group') renderGroup();
       else if (currentTab === 'class') renderClass();
+      else if (currentTab === 'selfcheck') renderSelfTab();
     }
 
     async function init() {
@@ -501,6 +654,7 @@
           if (currentTab === 'overview') renderOverview();
           else if (currentTab === 'personal') renderPersonal();
           else if (currentTab === 'group') renderGroup();
+          else if (currentTab === 'selfcheck') renderSelfTab();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
           if (payload.new) classMeanings[payload.new.profile_id] = payload.new.meaning;
