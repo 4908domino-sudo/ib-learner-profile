@@ -457,11 +457,15 @@
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
       board.innerHTML = groupInfo.seats.map((seat, i) => {
-        const answer = (allResponses[seat]?.personal_answers||{})[browsId] || '';
+        const pa = allResponses[seat]?.personal_answers || {};
+        const directAnswer = pa[browsId] || '';
+        const fallbackEntry = !directAnswer && Object.entries(pa).find(([,v]) => v?.trim());
+        const answer = directAnswer || (fallbackEntry ? fallbackEntry[1] : '');
+        const fallbackProfile = fallbackEntry ? profiles.find(fp => fp.id === fallbackEntry[0]) : null;
         const label = `${seat}번${seat===mySeat?' (나)':''}`;
         return `<article class="postit" style="${styleVars(postitColors[i%6])};transform:rotate(${postitTurns[i%6]}deg)">
           <span class="pin"></span>
-          <p>${esc(answer||'아직 작성 전이에요.')}</p>
+          <p>${esc(answer||'아직 작성 전이에요.')}${fallbackProfile?`<br><small style="opacity:.6;font-size:10px">(${esc(fallbackProfile.ko)} 기준)</small>`:''}</p>
           <span class="name"><span class="avatar">${esc(label[0])}</span>${esc(label)}</span>
         </article>`;
       }).join('');
@@ -476,11 +480,19 @@
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
 
-      const members = groupInfo.seats.map((seat, i) => ({
-        seat, isMe: seat === mySeat,
-        answer: (allResponses[seat]?.personal_answers||{})[browsId] || '',
-        label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
-      }));
+      const members = groupInfo.seats.map((seat, i) => {
+        const pa = allResponses[seat]?.personal_answers || {};
+        // Show answer for the browsed profile; if empty, fall back to any written answer
+        const directAnswer = pa[browsId] || '';
+        const fallbackEntry = !directAnswer && Object.entries(pa).find(([,v]) => v?.trim());
+        const answer = directAnswer || (fallbackEntry ? fallbackEntry[1] : '');
+        const fallbackProfile = fallbackEntry ? profiles.find(p => p.id === fallbackEntry[0]) : null;
+        return {
+          seat, isMe: seat === mySeat,
+          answer, fallbackProfile,
+          label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
+        };
+      });
 
       const myEditing = data.group_editing;
       const mySubmitted = data.group_submitted;
@@ -563,7 +575,7 @@
                 ${members.map(m=>`
                   <article class="postit" style="${styleVars(postitColors[m.idx%6])};transform:rotate(${postitTurns[m.idx%6]}deg)">
                     <span class="pin"></span>
-                    <p>${esc(m.answer||'아직 작성 전이에요.')}</p>
+                    <p>${esc(m.answer||'아직 작성 전이에요.')}${m.fallbackProfile?`<br><small style="opacity:.6;font-size:10px">(${esc(m.fallbackProfile.ko)} 기준)</small>`:''}</p>
                     <span class="name"><span class="avatar">${esc(m.label[0])}</span>${esc(m.label)}</span>
                   </article>`).join('')}
               </div>
