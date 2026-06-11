@@ -272,6 +272,7 @@
     let classroom = null;
     let mySeat = null;
     let currentTab = 'personal';
+    let browseProfileId = null;
     const allResponses = {};
     const classMeanings = {};
 
@@ -451,13 +452,12 @@
     function refreshPostitBoard() {
       const board = document.getElementById('postit-board');
       if (!board) return;
-      const data = myData();
-      const selectedId = data.group_profile_id || profiles[0].id;
+      const browsId = browseProfileId || myData().group_profile_id || profiles[0].id;
       const groupInfo = getGroupInfo(mySeat);
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
       board.innerHTML = groupInfo.seats.map((seat, i) => {
-        const answer = (allResponses[seat]?.personal_answers||{})[selectedId] || '';
+        const answer = (allResponses[seat]?.personal_answers||{})[browsId] || '';
         const label = `${seat}번${seat===mySeat?' (나)':''}`;
         return `<article class="postit" style="${styleVars(postitColors[i%6])};transform:rotate(${postitTurns[i%6]}deg)">
           <span class="pin"></span>
@@ -470,19 +470,75 @@
 
     function renderGroup() {
       const data = myData();
-      const selectedId = data.group_profile_id || profiles[0].id;
-      const p = profiles.find(item => item.id === selectedId) || profiles[0];
+      const browsId = browseProfileId || data.group_profile_id || profiles[0].id;
+      const p = profiles.find(item => item.id === browsId) || profiles[0];
       const groupInfo = getGroupInfo(mySeat);
       const postitColors = ['lime','blue','pink','orange','cyan','violet'];
       const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
 
       const members = groupInfo.seats.map((seat, i) => ({
         seat, isMe: seat === mySeat,
-        answer: (allResponses[seat]?.personal_answers||{})[selectedId] || '',
+        answer: (allResponses[seat]?.personal_answers||{})[browsId] || '',
         label: `${seat}번${seat===mySeat?' (나)':''}`, idx: i
       }));
 
-      const submitted = data.group_submitted;
+      const myEditing = data.group_editing;
+      const mySubmitted = data.group_submitted;
+      const otherEditingSeat = groupInfo.seats.find(s => s !== mySeat && allResponses[s]?.group_editing);
+      // For editing form, use the saved group_profile_id as default
+      const editProfileId = data.group_profile_id || profiles[0].id;
+      const editP = profiles.find(item => item.id === editProfileId) || profiles[0];
+
+      let rightPanel;
+      if (myEditing) {
+        rightPanel = `
+          <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:12px;font-weight:750;color:var(--muted);margin-bottom:5px">학습자상 선택</label>
+            <select id="group-profile-sel">
+              ${profiles.map(item=>`<option value="${item.id}"${item.id===editProfileId?' selected':''}>${esc(item.ko)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="compose-frame">
+            <span class="prefix" id="compose-prefix">${esc(editP.ko)}은/는...</span>
+            <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(data.group_def||'')}</textarea>
+          </div>
+          <div class="meta"><span class="hint">${icon('sparkles',13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="btn ghost" id="group-cancel">취소</button>
+            <button class="btn primary block" id="group-submit" disabled>${icon('send',17)} 제출하기</button>
+          </div>`;
+      } else if (mySubmitted) {
+        rightPanel = `
+          <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+          <div class="submitted">
+            <span class="badge">${icon('check',16)} 제출 완료</span>
+            <span style="color:var(--accent)">${icon('quote',28)}</span>
+            <p class="def"><b style="color:var(--deep)">${esc(editP.ko)}</b>은/는 ${esc(data.group_def||'')}</p>
+            <div class="submitted-foot">
+              <span class="hint">${icon('users',14)} 제출이 완료됐어요</span>
+              ${otherEditingSeat
+                ? `<button class="btn small" disabled style="opacity:.5">${icon('users',13)} ${otherEditingSeat}번이 수정 중</button>`
+                : `<button class="btn small" id="group-edit">${icon('pencil',14)} 다시 고치기</button>`}
+            </div>
+          </div>`;
+      } else if (otherEditingSeat) {
+        rightPanel = `
+          <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+          <p class="lead">모둠원의 생각을 살펴보고, 우리 모둠만의 학습자상 정의를 만들어 보세요.</p>
+          <div style="margin-top:16px">
+            <button class="btn block" disabled style="opacity:.55;cursor:not-allowed;padding:14px">
+              ${icon('users',16)} ${otherEditingSeat}번 친구가 입력 중이에요...
+            </button>
+          </div>`;
+      } else {
+        rightPanel = `
+          <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+          <p class="lead">모둠원의 생각을 살펴보고, <b style="color:var(--deep)">${esc(p.ko)}</b>을/를 우리 모둠만의 한 문장으로 정리해 보세요.</p>
+          <div style="margin-top:16px">
+            <button class="btn primary block" id="group-start-edit" style="padding:14px">${icon('pencil',16)} 모둠 의견 입력하기</button>
+          </div>`;
+      }
 
       document.getElementById('main').innerHTML = `
         <section class="screen" style="${styleVars(p.color)}">
@@ -494,7 +550,7 @@
             </div>
             <div class="lens">
               <label for="profile-select">함께 보는 학습자상</label>
-              <select id="profile-select">${profiles.map(item=>`<option value="${item.id}"${item.id===selectedId?' selected':''}>${esc(item.ko)}</option>`).join('')}</select>
+              <select id="profile-select">${profiles.map(item=>`<option value="${item.id}"${item.id===browsId?' selected':''}>${esc(item.ko)}</option>`).join('')}</select>
             </div>
           </header>
           <div class="split">
@@ -512,34 +568,42 @@
                   </article>`).join('')}
               </div>
             </section>
-            <section class="panel">
-              <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
-              ${submitted ? `
-                <div class="submitted">
-                  <span class="badge">${icon('check',16)} 제출 완료</span>
-                  <span style="color:var(--accent)">${icon('quote',28)}</span>
-                  <p class="def"><b style="color:var(--deep)">${esc(p.ko)}</b>은/는 ${esc(data.group_def||'')}</p>
-                  <div class="submitted-foot">
-                    <span class="hint">${icon('users',14)} 제출이 완료됐어요</span>
-                    <button class="btn small" id="group-edit">${icon('pencil',14)} 다시 고치기</button>
-                  </div>
-                </div>` : `
-                <p class="lead">모둠원의 생각을 살펴보고, <b style="color:var(--deep)">${esc(p.ko)}</b>을/를 우리 모둠만의 한 문장으로 정리해 보세요.</p>
-                <div class="compose-frame">
-                  <span class="prefix">${esc(p.ko)}은/는...</span>
-                  <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(data.group_def||'')}</textarea>
-                </div>
-                <div class="meta"><span class="hint">${icon('sparkles',13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
-                <button class="btn primary block" id="group-submit" disabled>${icon('send',17)} 우리 모둠 정의 제출하기</button>`}
-            </section>
+            <section class="panel">${rightPanel}</section>
           </div>
         </section>`;
 
-      document.getElementById('profile-select').addEventListener('change', async e => {
-        await upsertMe({ group_profile_id: e.target.value, group_def: '', group_submitted: false });
+      // Header profile selector (browse only, no DB save)
+      document.getElementById('profile-select').addEventListener('change', e => {
+        browseProfileId = e.target.value;
         renderGroup(); hydrateIcons();
       });
 
+      // Open editing form
+      document.getElementById('group-start-edit')?.addEventListener('click', async () => {
+        await upsertMe({ group_editing: true });
+        renderGroup(); hydrateIcons();
+      });
+
+      // Cancel editing
+      document.getElementById('group-cancel')?.addEventListener('click', async () => {
+        await upsertMe({ group_editing: false });
+        renderGroup(); hydrateIcons();
+      });
+
+      // Edit again from submitted state
+      document.getElementById('group-edit')?.addEventListener('click', async () => {
+        await upsertMe({ group_editing: true, group_submitted: false });
+        renderGroup(); hydrateIcons();
+      });
+
+      // In-form profile selector updates prefix only
+      document.getElementById('group-profile-sel')?.addEventListener('change', e => {
+        const np = profiles.find(item => item.id === e.target.value);
+        const prefix = document.getElementById('compose-prefix');
+        if (prefix && np) prefix.textContent = `${np.ko}은/는...`;
+      });
+
+      // Textarea + submit (no DB writes until submit)
       const defText = document.getElementById('group-def');
       if (defText) {
         const submitBtn = document.getElementById('group-submit');
@@ -547,15 +611,17 @@
         const sync = () => { submitBtn.disabled = !defText.value.trim(); cntEl.textContent = `${defText.value.length}/200`; };
         defText.addEventListener('input', sync);
         submitBtn.addEventListener('click', async () => {
-          await upsertMe({ group_profile_id: selectedId, group_def: defText.value.trim(), group_submitted: true });
+          const text = defText.value.trim();
+          if (!text) return;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<span class="spinner"></span> 제출 중...`;
+          const chosenProfileId = document.getElementById('group-profile-sel')?.value || editProfileId;
+          await upsertMe({ group_profile_id: chosenProfileId, group_def: text, group_submitted: true, group_editing: false });
           renderGroup(); hydrateIcons();
         });
         sync();
+        setTimeout(() => defText.focus(), 50);
       }
-      document.getElementById('group-edit')?.addEventListener('click', async () => {
-        await upsertMe({ group_submitted: false });
-        renderGroup(); hydrateIcons();
-      });
     }
 
     function renderSelf() {
@@ -664,6 +730,11 @@
         const chip = document.getElementById('seat-chip');
         chip.textContent = `${savedSeat}번 학생`;
         chip.style.display = '';
+        // Clear stale editing lock from previous session
+        sb.from('student_responses').upsert(
+          { classroom_id: classroomId, seat_number: mySeat, group_editing: false },
+          { onConflict: 'classroom_id,seat_number' }
+        ).then();
       }
 
       const [{ data: resps }, { data: meanings }] = await Promise.all([
@@ -678,8 +749,8 @@
           if (payload.eventType === 'DELETE') delete allResponses[payload.old.seat_number];
           else allResponses[payload.new.seat_number] = payload.new;
           if (mySeat && currentTab === 'group') {
-            const typing = document.activeElement?.id === 'group-def';
-            if (typing) { refreshPostitBoard(); } else { renderGroup(); hydrateIcons(); }
+            if (allResponses[mySeat]?.group_editing) { refreshPostitBoard(); }
+            else { renderGroup(); hydrateIcons(); }
           }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'class_meanings', filter: `classroom_id=eq.${classroomId}` }, payload => {
