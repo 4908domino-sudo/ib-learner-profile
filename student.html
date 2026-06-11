@@ -453,8 +453,8 @@
       const selectedId = data.group_profile_id || profiles[0].id;
       const p = profiles.find(item => item.id === selectedId) || profiles[0];
       const groupInfo = getGroupInfo(mySeat);
-      const postitColors = ['lime','blue','pink','orange'];
-      const postitTurns = [-2.2, 1.6, -1.2, 2.4];
+      const postitColors = ['lime','blue','pink','orange','cyan','violet'];
+      const postitTurns = [-2.2, 1.6, -1.2, 2.4, -1.8, 2.0];
 
       const members = groupInfo.seats.map((seat, i) => ({
         seat, isMe: seat === mySeat,
@@ -484,8 +484,8 @@
                 <span class="chip">${icon(p.icon,14)} ${esc(p.ko)}</span>
               </div>
               <div class="postits">
-                ${members.slice(0,4).map(m=>`
-                  <article class="postit" style="${styleVars(postitColors[m.idx%4])};transform:rotate(${postitTurns[m.idx]}deg)">
+                ${members.map(m=>`
+                  <article class="postit" style="${styleVars(postitColors[m.idx%6])};transform:rotate(${postitTurns[m.idx%6]}deg)">
                     <span class="pin"></span>
                     <p>${esc(m.answer||'아직 작성 전이에요.')}</p>
                     <span class="name"><span class="avatar">${esc(m.label[0])}</span>${esc(m.label)}</span>
