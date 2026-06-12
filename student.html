@@ -51,6 +51,13 @@
     .seat small { min-height: 16px; color: var(--muted); font-size: 11px; font-weight: 700; }
     .seat.selected small { color: #005eeb; }
     .seat.active-seat { background: #eaf2fe; }
+    .seat.my-seat { border-color: #0066ff; box-shadow: inset 0 0 0 2.5px #0066ff, 0 0 0 4px rgba(0,102,255,.12); background: #e0ecff; }
+    .seat.my-seat small { color: #005eeb; font-weight: 850; }
+    #seat-chip-area { display:inline-flex; align-items:center; gap:4px; }
+    .name-edit-btn { background:transparent; border:0; color:#0054d1; cursor:pointer; padding:0 2px; display:inline-flex; align-items:center; opacity:.5; transition:opacity .15s; }
+    .name-edit-btn:hover { opacity:1; }
+    .seat-chip-edit { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:999px; background:#eaf2fe; color:#0054d1; }
+    .name-confirm-btn { background:transparent; border:0; color:#0054d1; cursor:pointer; padding:0 2px; display:inline-flex; align-items:center; }
     .panel { border: 1px solid var(--line); border-radius: 22px; padding: 20px; background: #fff; }
     .panel-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
     .panel-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 15px; font-weight: 850; }
@@ -184,7 +191,7 @@
         <button class="tab" data-tab="group"><span class="tab-n">2</span><span class="tab-label">모둠 활동</span></button>
         <button class="tab" data-tab="self"><span class="tab-n">3</span><span class="tab-label">자기 평가</span></button>
       </nav>
-      <span class="seat-chip" id="seat-chip" style="display:none"></span>
+      <span id="seat-chip-area" style="display:none"></span>
     </header>
     <main id="main">
       <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:80px 20px;color:rgba(55,56,60,.55);font-size:14px">
@@ -240,7 +247,7 @@
 
     const profiles = [
       ["inquirers","탐구하는 사람","Inquirers","compass","blue","궁금한 것을 스스로 찾아보고 질문해요."],
-      ["knowledgeable","지식이 많은 사람","Knowledgeable","book","violet","여러 분야를 깊고 넓게 배워요."],
+      ["knowledgeable","지식이 풍부한 사람","Knowledgeable","book","violet","여러 분야를 깊고 넓게 배워요."],
       ["thinkers","생각하는 사람","Thinkers","lightbulb","purple","문제를 꼼꼼히 따져보고 해결해요."],
       ["communicators","소통하는 사람","Communicators","message","cyan","내 생각을 잘 전하고 남의 말도 들어요."],
       ["principled","원칙을 지키는 사람","Principled","scale","green","정직하고 약속과 규칙을 지켜요."],
@@ -287,6 +294,32 @@
       localStorage.setItem('ib_student_' + classroomId, JSON.stringify({ seat, name }));
     }
 
+    function updateChip(seat, name) {
+      const area = document.getElementById('seat-chip-area');
+      area.style.display = '';
+      area.innerHTML = `<span class="seat-chip">${esc(seat + '번')} · ${esc(name || '학생')}</span><button class="name-edit-btn" id="name-edit-btn" title="이름 변경">${icon('pencil',12)}</button>`;
+      document.getElementById('name-edit-btn').addEventListener('click', showNameEdit);
+    }
+
+    function showNameEdit() {
+      const saved = getMyStorage();
+      const area = document.getElementById('seat-chip-area');
+      area.innerHTML = `<span class="seat-chip-edit"><input id="name-edit-in" value="${esc(saved?.name||'')}" maxlength="20" placeholder="이름" style="width:80px;border:0;background:transparent;font:inherit;font-size:12px;color:#0054d1;font-weight:850;outline:none;padding:0"><button class="name-confirm-btn" id="name-confirm-btn" title="저장">${icon('check',13)}</button></span>`;
+      const doSave = () => {
+        const name = document.getElementById('name-edit-in').value.trim();
+        setMyStorage(mySeat, name);
+        upsertMe({ student_name: name });
+        updateChip(mySeat, name);
+      };
+      document.getElementById('name-confirm-btn').addEventListener('click', doSave);
+      const inp = document.getElementById('name-edit-in');
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doSave();
+        if (e.key === 'Escape') updateChip(mySeat, saved?.name);
+      });
+      inp.select(); inp.focus();
+    }
+
     function getGroupInfo(seat) {
       const assignments = classroom.group_assignments || {};
       const gs = Math.ceil(classroom.student_count / classroom.group_count);
@@ -319,6 +352,8 @@
 
     function renderSeatScreen() {
       const total = classroom.student_count;
+      const saved = getMyStorage();
+      const mySavedSeat = saved?.seat;
       document.getElementById('main').innerHTML = `
         <section class="screen">
           <header class="head">
@@ -334,9 +369,15 @@
                 ${Array.from({length:total},(_,i)=>{
                   const no = i+1;
                   const resp = allResponses[no];
-                  const busy = resp && (resp.student_name || Object.keys(resp.personal_answers||{}).length > 0);
-                  const label = resp?.student_name || (busy ? '활동 중' : '비어 있음');
-                  return `<button class="seat${busy?' active-seat':''}" data-seat="${no}">
+                  const isMine = no === mySavedSeat;
+                  const dbName = resp?.student_name || '';
+                  const nameStr = isMine ? (saved.name || dbName) : dbName;
+                  const busy = !isMine && resp && (dbName || Object.keys(resp.personal_answers||{}).length > 0);
+                  const label = isMine
+                    ? (nameStr ? `${nameStr} (나)` : '(나)')
+                    : (dbName || (busy ? '활동 중' : '비어 있음'));
+                  const cls = `seat${isMine ? ' my-seat' : (busy ? ' active-seat' : '')}`;
+                  return `<button class="${cls}" data-seat="${no}">
                     <span>${no}번</span>
                     <small>${esc(label)}</small>
                   </button>`;
@@ -345,7 +386,9 @@
             </section>
             <section class="panel">
               <div id="seat-form-area">
-                <div class="notice" data-icon="sparkles"> 왼쪽에서 내 번호를 선택하세요.</div>
+                ${mySavedSeat
+                  ? `<div class="notice" data-icon="sparkles"><b>${mySavedSeat}번</b>이 내 자리예요. 해당 번호를 클릭해서 이어서 시작하세요.</div>`
+                  : `<div class="notice" data-icon="sparkles">왼쪽에서 내 번호를 선택하세요.</div>`}
               </div>
             </section>
           </div>
@@ -356,10 +399,8 @@
     function enterSeat(seat, name) {
       mySeat = seat;
       setMyStorage(seat, name);
-      upsertMe({ student_name: name });
-      const chip = document.getElementById('seat-chip');
-      chip.textContent = `${seat}번 · ${name || '학생'}`;
-      chip.style.display = '';
+      upsertMe({ student_name: name, group_editing: false });
+      updateChip(seat, name);
       currentTab = 'personal';
       render();
     }
@@ -742,20 +783,6 @@
       classroom = cls;
       document.getElementById('brand-title').textContent = cls.name;
       document.title = cls.name + ' · IB 학습자상';
-
-      const savedStudent = getMyStorage();
-      const savedSeat = savedStudent?.seat;
-      if (savedSeat && savedSeat >= 1 && savedSeat <= cls.student_count) {
-        mySeat = savedSeat;
-        const chip = document.getElementById('seat-chip');
-        chip.textContent = `${savedSeat}번 · ${savedStudent.name || '학생'}`;
-        chip.style.display = '';
-        // Clear stale editing lock from previous session
-        sb.from('student_responses').upsert(
-          { classroom_id: classroomId, seat_number: mySeat, group_editing: false },
-          { onConflict: 'classroom_id,seat_number' }
-        ).then();
-      }
 
       const [{ data: resps }, { data: meanings }] = await Promise.all([
         sb.from('student_responses').select('*').eq('classroom_id', classroomId),
