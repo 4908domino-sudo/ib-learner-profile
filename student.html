@@ -545,6 +545,14 @@
       const groupDefs = data.group_defs || {};
       const myEditing = data.group_editing && data.group_profile_id === browsId;
       const mySubmitted = !!(groupDefs[browsId]?.trim());
+      // Find any group member who has submitted a def for this profile
+      const effectiveDef = (() => {
+        for (const seat of groupInfo.seats) {
+          const def = allResponses[seat]?.group_defs?.[browsId]?.trim();
+          if (def) return { def, seat, isMine: seat === mySeat };
+        }
+        return null;
+      })();
       const otherEditingSeat = groupInfo.seats.find(s => s !== mySeat && allResponses[s]?.group_editing && allResponses[s]?.group_profile_id === browsId);
       const editP = profiles.find(item => item.id === browsId) || profiles[0];
 
@@ -560,7 +568,7 @@
           </div>
           <div class="compose-frame">
             <span class="prefix" id="compose-prefix">${esc(editP.ko)}은/는...</span>
-            <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(groupDefs[browsId]||'')}</textarea>
+            <textarea id="group-def" maxlength="200" placeholder="예: 친구의 마음을 먼저 살피고, 필요할 때 먼저 도움을 주는 사람이다.">${esc(groupDefs[browsId]||effectiveDef?.def||'')}</textarea>
           </div>
           <div class="meta"><span class="hint">${icon('sparkles',13)} 모두가 고개를 끄덕이는 문장이면 완성!</span><span class="count" id="group-count">0/200</span></div>
           <div style="display:flex;gap:8px;margin-top:14px">
@@ -579,6 +587,21 @@
               ${otherEditingSeat
                 ? `<button class="btn small" disabled style="opacity:.5">${icon('users',13)} ${otherEditingSeat}번이 수정 중</button>`
                 : `<button class="btn small" id="group-edit">${icon('pencil',14)} 다시 고치기</button>`}
+            </div>
+          </div>`;
+      } else if (effectiveDef) {
+        // Another group member has submitted — show their def, allow revision
+        rightPanel = `
+          <div class="panel-bar"><span class="panel-title">${icon('quote',18)} 우리 모둠의 정의</span></div>
+          <div class="submitted">
+            <span class="badge">${icon('check',16)} 모둠 제출 완료</span>
+            <span style="color:var(--accent)">${icon('quote',28)}</span>
+            <p class="def"><b style="color:var(--deep)">${esc(editP.ko)}</b>은/는 ${esc(effectiveDef.def)}</p>
+            <div class="submitted-foot">
+              <span class="hint">${icon('users',14)} ${effectiveDef.seat}번 제출 · 우리 모둠 의견이에요</span>
+              ${otherEditingSeat
+                ? `<button class="btn small" disabled style="opacity:.5">${icon('users',13)} ${otherEditingSeat}번이 수정 중</button>`
+                : `<button class="btn small" id="group-start-edit" style="padding:8px 14px">${icon('pencil',14)} 수정하기</button>`}
             </div>
           </div>`;
       } else if (otherEditingSeat) {
