@@ -708,6 +708,7 @@
     }
 
     function renderSelf() {
+      console.log('[자기평가] classMeanings:', JSON.stringify(classMeanings));
       const scores = myScores();
       const rated = profiles.filter(p => scores[p.id]).length;
       const avgScores = calcAvg();
@@ -743,7 +744,8 @@
     }
 
     function selfCard(p, score) {
-      const meaning = classMeanings[p.id] || `우리 학급에게 ${p.ko}은/는 서로의 생각을 존중하며 함께 실천할 때 완성되는 모습입니다.`;
+      const classMeaning = classMeanings[p.id]?.trim();
+      const meaning = classMeaning || p.desc;
       return `<section class="panel" style="${styleVars(p.color)}">
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
           <span class="card-icon" style="flex:0 0 auto;width:40px;height:40px;border-radius:10px">${icon(p.icon,22)}</span>
@@ -751,6 +753,7 @@
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
               <span style="color:var(--ink);font-size:15px;font-weight:850">${esc(p.ko)}</span>
               ${score?`<span class="chip" style="background:var(--accent);color:#fff">${score}점</span>`:'<span class="chip">미평가</span>'}
+              ${classMeaning?`<span class="chip" style="background:var(--soft);color:var(--deep);font-size:10px">우리 학급의 정의</span>`:''}
             </div>
             <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.55;font-style:italic">"${esc(meaning)}"</p>
           </div>
